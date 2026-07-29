@@ -241,6 +241,32 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 .mc-opts.quiz label.correct{border-color:var(--good);background:var(--good-bg)}
 .mc-opts.quiz label.wrong{border-color:var(--bad);background:var(--bad-bg)}
 
+/* quiz una-domanda-alla-volta (wizard) */
+.quiz-wizard{margin-top:1rem}
+.quiz-top{margin-bottom:1rem}
+.quiz-count{font-size:.82rem;font-weight:700;color:var(--muted);letter-spacing:.4px;text-transform:uppercase;margin-bottom:.4rem}
+.quiz-progress{height:8px;background:var(--surface2);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.quiz-progress span{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-soft));transition:width .4s ease}
+.quiz-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:1.2rem 1.3rem;box-shadow:var(--shadow);min-height:120px}
+.quiz-card .qt{font-weight:600;font-size:1.08rem;margin-bottom:.9rem;color:var(--ink)}
+.quiz-card .mc-opts{margin-top:0}
+.quiz-card .mc-opts label{transition:border-color .2s ease,background .2s ease}
+.quiz-nav{display:flex;justify-content:space-between;gap:.8rem;margin-top:1rem}
+.quiz-nav .btn:disabled{opacity:.4;cursor:not-allowed}
+.quiz-num-row{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;margin-top:.2rem}
+.quiz-expl.inwiz{margin-top:1rem;display:block;animation:fade .3s ease}
+.quiz-result{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:1.8rem 1.4rem;box-shadow:var(--shadow);text-align:center}
+.quiz-result .rscore{font-family:var(--serif);font-size:2.6rem;font-weight:700;color:var(--accent);line-height:1}
+.quiz-result .rmsg{font-size:1.08rem;color:var(--ink-soft);margin:.8rem auto 0;max-width:46ch}
+.quiz-result .rsub{font-size:.9rem;color:var(--muted);margin-top:.5rem}
+.quiz-result .ractions{display:flex;gap:.7rem;justify-content:center;flex-wrap:wrap;margin-top:1.4rem}
+.quiz-dots{display:flex;gap:.35rem;justify-content:center;flex-wrap:wrap;margin-top:1.1rem}
+.quiz-dots i{width:11px;height:11px;border-radius:50%;background:var(--surface2);border:1px solid var(--line-strong);cursor:pointer;transition:transform .15s ease}
+.quiz-dots i:hover{transform:scale(1.25)}
+.quiz-dots i.ok{background:var(--good);border-color:var(--good)}
+.quiz-dots i.no{background:var(--bad);border-color:var(--bad)}
+.quiz-dots i.cur{outline:2px solid var(--accent);outline-offset:2px}
+
 /* intro / hero */
 .hero{
   background:linear-gradient(135deg,var(--surface),var(--surface2));
@@ -493,13 +519,8 @@ table.data th{background:var(--surface2);font-family:var(--serif)}
   <!-- ---- QUIZ ---- -->
   <div class="subpanel" id="geom-quiz">
     <h2>Quiz · Ottica geometrica</h2>
-    <p class="lead">10 domande teoriche e 5 problemi numerici. Rispondi e premi "Correggi": otterrai il punteggio e la spiegazione di ogni errore.</p>
-    <div id="geom-quiz-list"></div>
-    <div class="quiz-bar">
-      <div class="score" id="geom-quiz-score">Punteggio: <b>—</b></div>
-      <div><button class="btn ghost" onclick="resetQuiz('geom')">Azzera</button>
-      <button class="btn primary" onclick="gradeQuiz('geom')">Correggi</button></div>
-    </div>
+    <p class="lead">10 domande teoriche e 5 problemi numerici, una alla volta. Rispondi e vedrai subito l'esito; puoi tornare indietro quando vuoi.</p>
+    <div class="quiz-wizard" id="geom-quiz"></div>
   </div>
 </section>
 
@@ -634,13 +655,8 @@ table.data th{background:var(--surface2);font-family:var(--serif)}
 
   <div class="subpanel" id="lenti-quiz">
     <h2>Quiz · Lenti e specchi</h2>
-    <p class="lead">10 domande teoriche e 5 problemi numerici.</p>
-    <div id="lenti-quiz-list"></div>
-    <div class="quiz-bar">
-      <div class="score" id="lenti-quiz-score">Punteggio: <b>—</b></div>
-      <div><button class="btn ghost" onclick="resetQuiz('lenti')">Azzera</button>
-      <button class="btn primary" onclick="gradeQuiz('lenti')">Correggi</button></div>
-    </div>
+    <p class="lead">10 domande teoriche e 5 problemi numerici, una alla volta, con esito immediato e possibilità di rivedere.</p>
+    <div class="quiz-wizard" id="lenti-quiz"></div>
   </div>
 </section>
 
@@ -741,13 +757,8 @@ table.data th{background:var(--surface2);font-family:var(--serif)}
 
   <div class="subpanel" id="onde-quiz">
     <h2>Quiz · Ottica ondulatoria</h2>
-    <p class="lead">10 domande teoriche e 5 problemi numerici.</p>
-    <div id="onde-quiz-list"></div>
-    <div class="quiz-bar">
-      <div class="score" id="onde-quiz-score">Punteggio: <b>—</b></div>
-      <div><button class="btn ghost" onclick="resetQuiz('onde')">Azzera</button>
-      <button class="btn primary" onclick="gradeQuiz('onde')">Correggi</button></div>
-    </div>
+    <p class="lead">10 domande teoriche e 5 problemi numerici, una alla volta, con esito immediato e possibilità di rivedere.</p>
+    <div class="quiz-wizard" id="onde-quiz"></div>
   </div>
 </section>
 
@@ -1571,76 +1582,128 @@ const QUIZ={
  }
 };
 
-const QUIZ_EXPL={}; // mappa: elemento .quiz-expl -> testo originale (con MathJax non ancora tipografato)
+/* messaggi incoraggianti (senza emoji) */
+const MSG_OK=['Esatto!','Perfetto!','Proprio così!','Ottimo!','Bravissima scelta!','Sì, corretto!'];
+const MSG_NO=['Non ci siamo ancora, ma stai ragionando bene.','Capita: guarda la spiegazione, è più semplice di quanto sembri.','Quasi! Rileggi con calma:','Nessun problema, si impara così:','Non è quella giusta, ma niente panico:'];
+function pick(a){return a[Math.floor(Math.random()*a.length)];}
+function typesetEl(el){ if(window.MathJax&&MathJax.typesetPromise)MathJax.typesetPromise([el]); }
+
+const quizState={}; // group -> {cur, items, answered[]}
 function buildQuiz(group){
-  const cont=document.getElementById(group+'-quiz-list');
   const Q=QUIZ[group];
-  let idx=0;
-  const h3=document.createElement('h3');h3.textContent='Domande teoriche';cont.appendChild(h3);
-  Q.theory.forEach((item)=>{ cont.appendChild(mcQuestion(group,idx,item)); idx++; });
-  const h3b=document.createElement('h3');h3b.textContent='Problemi numerici';cont.appendChild(h3b);
-  Q.num.forEach((item)=>{ cont.appendChild(numQuestion(group,idx,item)); idx++; });
+  const items=Q.theory.map(t=>Object.assign({type:'mc'},t))
+    .concat(Q.num.map(n=>Object.assign({type:'num'},n)));
+  quizState[group]={cur:0, items, answered:new Array(items.length).fill(null)};
+  renderQuiz(group);
 }
-function mcQuestion(group,idx,item){
-  const div=document.createElement('div');div.className='quiz-q';div.dataset.type='mc';div.dataset.correct=item.c;
-  let opts='';
-  item.o.forEach((o,j)=>{
-    opts+='<label><input type="radio" name="'+group+'-q'+idx+'" value="'+j+'"><span>'+o+'</span></label>';
+function renderQuiz(group){
+  const st=quizState[group];
+  const cont=document.getElementById(group+'-quiz');
+  const n=st.items.length;
+  if(st.cur>=n){ renderResult(group,cont); return; }
+  const it=st.items[st.cur];
+  const ans=st.answered[st.cur];
+  let h='';
+  // barra di avanzamento
+  h+='<div class="quiz-top">'+
+     '<div class="quiz-count">Domanda '+(st.cur+1)+' di '+n+' · '+(it.type==='mc'?'teoria':'numerico')+'</div>'+
+     '<div class="quiz-progress"><span style="width:'+Math.round((st.cur+1)/n*100)+'%"></span></div></div>';
+  // carta domanda
+  h+='<div class="quiz-card"><div class="qt">'+it.q+'</div>';
+  if(it.type==='mc'){
+    h+='<div class="mc-opts quiz">';
+    it.o.forEach((o,j)=>{
+      let cls='';
+      if(ans){ if(j===it.c)cls='correct'; else if(j===ans.given)cls='wrong'; }
+      h+='<label class="'+cls+'" data-j="'+j+'"><input type="radio" '+(ans&&ans.given===j?'checked':'')+(ans?' disabled':'')+'><span>'+o+'</span></label>';
+    });
+    h+='</div>';
+  } else {
+    h+='<div class="quiz-num-row"><input type="text" id="'+group+'-numin" placeholder="scrivi il valore" value="'+(ans?ans.raw.replace(/"/g,'&quot;'):'')+'"'+(ans?' disabled':'')+'>'+
+       (ans?'':'<button class="btn primary" data-act="verify">Verifica</button>')+'</div>';
+  }
+  if(ans){
+    h+='<div class="quiz-expl inwiz '+(ans.correct?'ok':'no')+'"><b>'+ans.msg+'</b> '+it.e+'</div>';
+  }
+  h+='</div>';
+  // navigazione
+  h+='<div class="quiz-nav">'+
+     '<button class="btn ghost" data-act="prev"'+(st.cur===0?' disabled':'')+'>← Indietro</button>'+
+     (st.cur===n-1
+        ? '<button class="btn primary" data-act="result">Vedi risultato →</button>'
+        : '<button class="btn primary" data-act="next">Avanti →</button>')+
+     '</div>';
+  // pallini di riepilogo/navigazione
+  h+='<div class="quiz-dots">';
+  for(let i=0;i<n;i++){
+    const a=st.answered[i];
+    const cls=(i===st.cur?'cur ':'')+(a?(a.correct?'ok':'no'):'');
+    h+='<i class="'+cls+'" data-go="'+i+'" title="Domanda '+(i+1)+'"></i>';
+  }
+  h+='</div>';
+  cont.innerHTML=h;
+
+  // listener
+  if(it.type==='mc' && !ans){
+    cont.querySelectorAll('.mc-opts label').forEach(lb=>lb.addEventListener('click',()=>{
+      const j=parseInt(lb.dataset.j);
+      const correct=(j===it.c);
+      st.answered[st.cur]={given:j,correct,msg:pick(correct?MSG_OK:MSG_NO)};
+      renderQuiz(group);
+    }));
+  }
+  if(it.type==='num' && !ans){
+    const doVerify=()=>{
+      const inp=document.getElementById(group+'-numin');
+      const raw=inp.value.trim(); if(raw==='')return;
+      const num=parseFloat(raw.replace(',','.'));
+      const correct=!isNaN(num)&&Math.abs(num-it.a)<=it.tol;
+      st.answered[st.cur]={raw,correct,msg:pick(correct?MSG_OK:MSG_NO)};
+      renderQuiz(group);
+    };
+    const vb=cont.querySelector('[data-act="verify"]'); if(vb)vb.addEventListener('click',doVerify);
+    const inp=document.getElementById(group+'-numin');
+    if(inp)inp.addEventListener('keydown',e=>{if(e.key==='Enter')doVerify();});
+  }
+  const prev=cont.querySelector('[data-act="prev"]'); if(prev)prev.addEventListener('click',()=>{st.cur=Math.max(0,st.cur-1);renderQuiz(group);});
+  const next=cont.querySelector('[data-act="next"]'); if(next)next.addEventListener('click',()=>{st.cur=Math.min(n,st.cur+1);renderQuiz(group);});
+  const res=cont.querySelector('[data-act="result"]'); if(res)res.addEventListener('click',()=>{st.cur=n;renderQuiz(group);});
+  cont.querySelectorAll('.quiz-dots i').forEach(d=>d.addEventListener('click',()=>{st.cur=parseInt(d.dataset.go);renderQuiz(group);}));
+  typesetEl(cont);
+}
+function renderResult(group,cont){
+  const st=quizState[group];
+  const n=st.items.length;
+  const score=st.answered.filter(a=>a&&a.correct).length;
+  const answered=st.answered.filter(a=>a).length;
+  let msg;
+  const frac=score/n;
+  if(score===n) msg='Perfetto: hai risposto correttamente a tutte le domande. Padroneggi bene questo capitolo.';
+  else if(frac>=0.7) msg='Ottimo lavoro. Hai una comprensione solida: rivedi con calma le poche domande sbagliate e sei a posto.';
+  else if(frac>=0.4) msg='Buon punto di partenza. Rileggi la teoria delle domande che ti hanno messo in difficoltà e riprova: migliorerai in fretta.';
+  else msg='Va bene così: sbagliare fa parte dell\'imparare. Torna alla teoria e alle simulazioni, poi riprova il quiz senza fretta.';
+  let sub = (answered<n)? ('Hai risposto a '+answered+' domande su '+n+'.') : 'Hai completato tutte le domande.';
+  let h='<div class="quiz-result">'+
+    '<div class="rscore">'+score+' / '+n+'</div>'+
+    '<div class="rmsg">'+msg+'</div>'+
+    '<div class="rsub">'+sub+'</div>'+
+    '<div class="ractions">'+
+      '<button class="btn ghost" data-act="review">Rivedi le domande</button>'+
+      '<button class="btn primary" data-act="restart">Ricomincia</button>'+
+    '</div>'+
+    '<div class="quiz-dots">';
+  for(let i=0;i<n;i++){
+    const a=st.answered[i];
+    h+='<i class="'+(a?(a.correct?'ok':'no'):'')+'" data-go="'+i+'" title="Domanda '+(i+1)+'"></i>';
+  }
+  h+='</div></div>';
+  cont.innerHTML=h;
+  cont.querySelector('[data-act="review"]').addEventListener('click',()=>{st.cur=0;renderQuiz(group);});
+  cont.querySelector('[data-act="restart"]').addEventListener('click',()=>{
+    st.answered=new Array(n).fill(null);st.cur=0;renderQuiz(group);
   });
-  div.innerHTML='<div class="qn">Teoria · '+(idx+1)+'</div><div class="qt">'+item.q+'</div>'+
-    '<div class="mc-opts quiz">'+opts+'</div>'+
-    '<div class="quiz-expl"></div>';
-  div._expl=item.e;
-  return div;
-}
-function numQuestion(group,idx,item){
-  const div=document.createElement('div');div.className='quiz-q quiz-num';div.dataset.type='num';
-  div.dataset.ans=item.a;div.dataset.tol=item.tol;
-  div.innerHTML='<div class="qn">Numerico · '+(idx+1)+'</div><div class="qt">'+item.q+'</div>'+
-    '<input type="text" placeholder="risposta">'+
-    '<div class="quiz-expl"></div>';
-  div._expl=item.e;
-  return div;
-}
-function gradeQuiz(group){
-  const cont=document.getElementById(group+'-quiz-list');
-  const qs=cont.querySelectorAll('.quiz-q');
-  let score=0,total=qs.length;
-  qs.forEach(q=>{
-    const expl=q.querySelector('.quiz-expl');
-    let ok=false;
-    if(q.dataset.type==='mc'){
-      const c=parseInt(q.dataset.correct);
-      const sel=q.querySelector('input:checked');
-      q.querySelectorAll('.mc-opts label').forEach((lb,j)=>{
-        lb.classList.remove('correct','wrong');
-        if(j===c)lb.classList.add('correct');
-        if(sel&&parseInt(sel.value)===j&&j!==c)lb.classList.add('wrong');
-      });
-      ok = sel && parseInt(sel.value)===c;
-    } else {
-      const inp=q.querySelector('input');
-      const num=parseFloat(inp.value.replace(',','.'));
-      ok = !isNaN(num) && Math.abs(num-parseFloat(q.dataset.ans))<=parseFloat(q.dataset.tol);
-      inp.style.borderColor = ok?css('--good'):css('--bad');
-    }
-    if(ok)score++;
-    expl.className='quiz-expl show '+(ok?'ok':'no');
-    expl.innerHTML=(ok?'<b>Corretto.</b> ':'<b>Da rivedere.</b> ')+q._expl;
-  });
-  const sc=document.getElementById(group+'-quiz-score');
-  sc.innerHTML='Punteggio: <b>'+score+' / '+total+'</b>'+(score===total?' — perfetto!':(score>=total*0.6?' — bene, rivedi gli errori.':' — ripassa la teoria e riprova.'));
-  if(window.MathJax&&MathJax.typesetPromise)MathJax.typesetPromise([cont]);
-  cont.scrollIntoView({behavior:'smooth',block:'start'});
-}
-function resetQuiz(group){
-  const cont=document.getElementById(group+'-quiz-list');
-  cont.querySelectorAll('.quiz-q').forEach(q=>{
-    q.querySelectorAll('input').forEach(inp=>{ if(inp.type==='radio')inp.checked=false; else{inp.value='';inp.style.borderColor='';} });
-    q.querySelectorAll('.mc-opts label').forEach(lb=>lb.classList.remove('correct','wrong'));
-    const e=q.querySelector('.quiz-expl');e.className='quiz-expl';e.innerHTML='';
-  });
-  document.getElementById(group+'-quiz-score').innerHTML='Punteggio: <b>—</b>';
+  cont.querySelectorAll('.quiz-dots i').forEach(d=>d.addEventListener('click',()=>{st.cur=parseInt(d.dataset.go);renderQuiz(group);}));
+  typesetEl(cont);
 }
 
 /* ==================================================================
