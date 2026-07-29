@@ -251,6 +251,9 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 .quiz-card .qt{font-weight:600;font-size:1.08rem;margin-bottom:.9rem;color:var(--ink)}
 .quiz-card .mc-opts{margin-top:0}
 .quiz-card .mc-opts label{transition:border-color .2s ease,background .2s ease}
+.quiz-card .mc-opts label.sel{border-color:var(--accent);background:var(--surface);box-shadow:0 0 0 1px var(--accent) inset}
+.quiz-send{display:flex;align-items:center;gap:.7rem;margin-top:1rem;flex-wrap:wrap}
+.quiz-sent-note{font-size:.82rem;color:var(--muted)}
 .quiz-nav{display:flex;justify-content:space-between;gap:.8rem;margin-top:1rem}
 .quiz-nav .btn:disabled{opacity:.4;cursor:not-allowed}
 .quiz-num-row{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;margin-top:.2rem}
@@ -1602,7 +1605,8 @@ function renderQuiz(group){
   const n=st.items.length;
   if(st.cur>=n){ renderResult(group,cont); return; }
   const it=st.items[st.cur];
-  const ans=st.answered[st.cur];
+  const a=st.answered[st.cur];               // {given,raw,submitted,correct,msg} oppure null
+  const submitted = !!(a && a.submitted);
   let h='';
   // barra di avanzamento
   h+='<div class="quiz-top">'+
@@ -1613,18 +1617,22 @@ function renderQuiz(group){
   if(it.type==='mc'){
     h+='<div class="mc-opts quiz">';
     it.o.forEach((o,j)=>{
+      const chosen = a && a.given===j;
       let cls='';
-      if(ans){ if(j===it.c)cls='correct'; else if(j===ans.given)cls='wrong'; }
-      h+='<label class="'+cls+'" data-j="'+j+'"><input type="radio" '+(ans&&ans.given===j?'checked':'')+(ans?' disabled':'')+'><span>'+o+'</span></label>';
+      if(submitted){ if(j===it.c)cls='correct'; else if(chosen)cls='wrong'; }
+      else if(chosen)cls='sel';
+      h+='<label class="'+cls+'" data-j="'+j+'"><input type="radio" '+(chosen?'checked':'')+'><span>'+o+'</span></label>';
     });
     h+='</div>';
   } else {
-    h+='<div class="quiz-num-row"><input type="text" id="'+group+'-numin" placeholder="scrivi il valore" value="'+(ans?ans.raw.replace(/"/g,'&quot;'):'')+'"'+(ans?' disabled':'')+'>'+
-       (ans?'':'<button class="btn primary" data-act="verify">Verifica</button>')+'</div>';
+    h+='<div class="quiz-num-row"><input type="text" id="'+group+'-numin" placeholder="scrivi il valore" value="'+(a&&a.raw?a.raw.replace(/"/g,'&quot;'):'')+'"></div>';
   }
-  if(ans){
-    h+='<div class="quiz-expl inwiz '+(ans.correct?'ok':'no')+'"><b>'+ans.msg+'</b> '+it.e+'</div>';
-  }
+  // feedback (solo dopo l'invio; modificabile)
+  h+='<div class="quiz-expl inwiz '+(submitted?(a.correct?'ok':'no'):'')+'"'+(submitted?'':' style="display:none"')+'>'+
+     (submitted?('<b>'+a.msg+'</b> '+it.e):'')+'</div>';
+  // tasto Invia
+  h+='<div class="quiz-send"><button class="btn primary" data-act="send">Invia</button>'+
+     '<span class="quiz-sent-note"'+(submitted?'':' style="display:none"')+'>Puoi modificare la risposta e reinviare.</span></div>';
   h+='</div>';
   // navigazione
   h+='<div class="quiz-nav">'+
@@ -1636,35 +1644,47 @@ function renderQuiz(group){
   // pallini di riepilogo/navigazione
   h+='<div class="quiz-dots">';
   for(let i=0;i<n;i++){
-    const a=st.answered[i];
-    const cls=(i===st.cur?'cur ':'')+(a?(a.correct?'ok':'no'):'');
+    const x=st.answered[i];
+    const cls=(i===st.cur?'cur ':'')+(x&&x.submitted?(x.correct?'ok':'no'):'');
     h+='<i class="'+cls+'" data-go="'+i+'" title="Domanda '+(i+1)+'"></i>';
   }
   h+='</div>';
   cont.innerHTML=h;
 
-  // listener
-  if(it.type==='mc' && !ans){
-    cont.querySelectorAll('.mc-opts label').forEach(lb=>lb.addEventListener('click',()=>{
-      const j=parseInt(lb.dataset.j);
-      const correct=(j===it.c);
-      st.answered[st.cur]={given:j,correct,msg:pick(correct?MSG_OK:MSG_NO)};
-      renderQuiz(group);
-    }));
+  // stato corrente (creato al primo tocco)
+  function ensure(){ if(!st.answered[st.cur]) st.answered[st.cur]={given:null,raw:'',submitted:false}; return st.answered[st.cur]; }
+  function hideFeedback(){
+    const fb=cont.querySelector('.quiz-expl'); if(fb){fb.style.display='none';fb.className='quiz-expl inwiz';}
+    const note=cont.querySelector('.quiz-sent-note'); if(note)note.style.display='none';
   }
-  if(it.type==='num' && !ans){
-    const doVerify=()=>{
+  function doSend(){
+    const o=ensure();
+    if(it.type==='mc'){
+      if(o.given==null) return;               // nessuna opzione scelta
+      o.correct=(o.given===it.c);
+    } else {
       const inp=document.getElementById(group+'-numin');
-      const raw=inp.value.trim(); if(raw==='')return;
-      const num=parseFloat(raw.replace(',','.'));
-      const correct=!isNaN(num)&&Math.abs(num-it.a)<=it.tol;
-      st.answered[st.cur]={raw,correct,msg:pick(correct?MSG_OK:MSG_NO)};
-      renderQuiz(group);
-    };
-    const vb=cont.querySelector('[data-act="verify"]'); if(vb)vb.addEventListener('click',doVerify);
-    const inp=document.getElementById(group+'-numin');
-    if(inp)inp.addEventListener('keydown',e=>{if(e.key==='Enter')doVerify();});
+      o.raw = inp ? inp.value.trim() : (o.raw||'');
+      if(o.raw==='') return;
+      const num=parseFloat(o.raw.replace(',','.'));
+      o.correct=!isNaN(num)&&Math.abs(num-it.a)<=it.tol;
+    }
+    o.submitted=true; o.msg=pick(o.correct?MSG_OK:MSG_NO);
+    renderQuiz(group);
   }
+  // scelta modificabile
+  if(it.type==='mc'){
+    cont.querySelectorAll('.mc-opts label').forEach(lb=>lb.addEventListener('click',()=>{
+      const o=ensure(); o.given=parseInt(lb.dataset.j); o.submitted=false; renderQuiz(group);
+    }));
+  } else {
+    const inp=document.getElementById(group+'-numin');
+    if(inp){
+      inp.addEventListener('input',()=>{const o=ensure();o.raw=inp.value;if(o.submitted){o.submitted=false;hideFeedback();}});
+      inp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();doSend();}});
+    }
+  }
+  const sb=cont.querySelector('[data-act="send"]'); if(sb)sb.addEventListener('click',doSend);
   const prev=cont.querySelector('[data-act="prev"]'); if(prev)prev.addEventListener('click',()=>{st.cur=Math.max(0,st.cur-1);renderQuiz(group);});
   const next=cont.querySelector('[data-act="next"]'); if(next)next.addEventListener('click',()=>{st.cur=Math.min(n,st.cur+1);renderQuiz(group);});
   const res=cont.querySelector('[data-act="result"]'); if(res)res.addEventListener('click',()=>{st.cur=n;renderQuiz(group);});
@@ -1674,8 +1694,8 @@ function renderQuiz(group){
 function renderResult(group,cont){
   const st=quizState[group];
   const n=st.items.length;
-  const score=st.answered.filter(a=>a&&a.correct).length;
-  const answered=st.answered.filter(a=>a).length;
+  const score=st.answered.filter(a=>a&&a.submitted&&a.correct).length;
+  const answered=st.answered.filter(a=>a&&a.submitted).length;
   let msg;
   const frac=score/n;
   if(score===n) msg='Perfetto: hai risposto correttamente a tutte le domande. Padroneggi bene questo capitolo.';
@@ -1694,7 +1714,7 @@ function renderResult(group,cont){
     '<div class="quiz-dots">';
   for(let i=0;i<n;i++){
     const a=st.answered[i];
-    h+='<i class="'+(a?(a.correct?'ok':'no'):'')+'" data-go="'+i+'" title="Domanda '+(i+1)+'"></i>';
+    h+='<i class="'+(a&&a.submitted?(a.correct?'ok':'no'):'')+'" data-go="'+i+'" title="Domanda '+(i+1)+'"></i>';
   }
   h+='</div></div>';
   cont.innerHTML=h;
