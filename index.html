@@ -1,0 +1,1660 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ottica — Percorso interattivo</title>
+<script>
+window.MathJax = {
+  tex: { inlineMath: [['\\(', '\\)']], displayMath: [['\\[', '\\]']] },
+  svg: { fontCache: 'global' },
+  options: { skipHtmlTags: ['script','noscript','style','textarea','pre','code'] }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-svg.js" id="MathJax-script" async></script>
+<style>
+/* ======================= THEME / PALETTE ======================= */
+:root{
+  --bg:#f2ecdf;
+  --bg2:#e9e1d0;
+  --surface:#fbf8f1;
+  --surface2:#f3eee2;
+  --ink:#2b2620;
+  --ink-soft:#4a4238;
+  --muted:#776d5d;
+  --accent:#a86a2c;         /* ochre principale */
+  --accent-soft:#c99457;
+  --accent2:#2f6d86;        /* teal per fuochi/assi */
+  --accent3:#6a4a86;        /* viola per oggetti */
+  --ray:#e0a017;            /* raggio luminoso ambra */
+  --ray-glow:rgba(224,160,23,.35);
+  --line:#d8cfbc;
+  --line-strong:#c3b79f;
+  --good:#2f6d86;           /* niente rosso/verde: uso teal/ambra */
+  --good-bg:rgba(47,109,134,.12);
+  --bad:#b0521f;            /* arancio-mattone per errori */
+  --bad-bg:rgba(176,82,31,.12);
+  --shadow:0 6px 22px rgba(60,48,30,.10);
+  --radius:14px;
+  --maxw:1120px;
+  --font: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --serif: Georgia,"Times New Roman",serif;
+}
+html[data-theme="night"]{
+  --bg:#12151a;
+  --bg2:#0d1014;
+  --surface:#1b2029;
+  --surface2:#222834;
+  --ink:#e7e2d6;
+  --ink-soft:#cfc9ba;
+  --muted:#9a927f;
+  --accent:#d09a5b;
+  --accent-soft:#b98444;
+  --accent2:#5fa6c0;
+  --accent3:#a487c4;
+  --ray:#f0c34e;
+  --ray-glow:rgba(240,195,78,.30);
+  --line:#2c333e;
+  --line-strong:#3b4450;
+  --good:#5fa6c0;
+  --good-bg:rgba(95,166,192,.15);
+  --bad:#d98a55;
+  --bad-bg:rgba(217,138,85,.15);
+  --shadow:0 6px 26px rgba(0,0,0,.45);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg);
+  color:var(--ink);
+  font-family:var(--font);
+  line-height:1.6;
+  transition:background .55s ease,color .55s ease;
+  -webkit-text-size-adjust:100%;
+}
+h1,h2,h3,h4{font-family:var(--serif);color:var(--ink);line-height:1.25;font-weight:600}
+h2{font-size:1.7rem;margin:.2em 0 .5em}
+h3{font-size:1.28rem;margin:1.4em 0 .4em;color:var(--accent)}
+h4{font-size:1.05rem;margin:1.1em 0 .3em;color:var(--ink-soft)}
+p{margin:.6em 0}
+a{color:var(--accent2)}
+strong{color:var(--ink)}
+code{font-family:ui-monospace,Menlo,Consolas,monospace;background:var(--surface2);padding:.08em .4em;border-radius:5px;font-size:.92em}
+
+/* ======================= HEADER ======================= */
+.topbar{
+  background:var(--surface);
+  border-bottom:1px solid var(--line);
+  transition:background .55s ease,border-color .55s ease;
+}
+.topbar-inner{
+  max-width:var(--maxw);margin:0 auto;padding:.7rem 1rem;
+  display:flex;align-items:center;gap:1rem;justify-content:space-between;flex-wrap:wrap;
+}
+.brand{display:flex;align-items:center;gap:.7rem;min-width:0}
+.brand .logo{
+  width:38px;height:38px;flex:0 0 auto;border-radius:10px;
+  background:linear-gradient(135deg,var(--accent),var(--accent-soft));
+  display:grid;place-items:center;box-shadow:var(--shadow);
+}
+.brand .logo svg{width:24px;height:24px}
+.brand-txt b{font-family:var(--serif);font-size:1.15rem;display:block;letter-spacing:.2px}
+.brand-txt span{font-size:.78rem;color:var(--muted)}
+
+/* toggle giorno/notte */
+.theme-toggle{
+  position:relative;width:66px;height:34px;border:none;border-radius:20px;cursor:pointer;
+  background:var(--bg2);border:1px solid var(--line-strong);
+  transition:background .55s ease;flex:0 0 auto;
+}
+.theme-toggle .knob{
+  position:absolute;top:3px;left:3px;width:26px;height:26px;border-radius:50%;
+  background:linear-gradient(135deg,#f6d774,#e0a017);
+  transition:transform .5s cubic-bezier(.65,.05,.35,1),background .5s ease;
+  box-shadow:0 2px 6px rgba(0,0,0,.25);
+}
+html[data-theme="night"] .theme-toggle .knob{
+  transform:translateX(32px);
+  background:linear-gradient(135deg,#c9d2e0,#8b97ad);
+}
+.theme-toggle .ic{position:absolute;top:50%;transform:translateY(-50%);font-size:.8rem;opacity:.6;pointer-events:none}
+.theme-toggle .ic.sun{left:8px}
+.theme-toggle .ic.moon{right:8px}
+
+/* ======================= MAIN NAV (schede) ======================= */
+nav.mainnav{
+  background:var(--surface);border-bottom:1px solid var(--line);
+  transition:background .55s ease,border-color .55s ease;
+}
+.mainnav-inner{max-width:var(--maxw);margin:0 auto;padding:.3rem 1rem;display:flex;gap:.3rem;flex-wrap:wrap}
+.mainnav button{
+  border:none;background:transparent;color:var(--muted);font-family:var(--font);
+  font-size:.95rem;font-weight:600;padding:.55rem .8rem;border-radius:9px;cursor:pointer;
+  border-bottom:3px solid transparent;transition:all .2s ease;
+}
+.mainnav button:hover{color:var(--ink);background:var(--surface2)}
+.mainnav button.active{color:var(--accent);border-bottom-color:var(--accent)}
+
+/* ======================= LAYOUT ======================= */
+main{max-width:var(--maxw);margin:0 auto;padding:1.4rem 1rem 4rem}
+.section{display:none;animation:fade .4s ease}
+.section.active{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* sub-nav (sottoschede) */
+.subnav{display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:1.4rem;
+  background:var(--surface2);padding:.35rem;border-radius:12px;border:1px solid var(--line)}
+.subnav button{
+  border:none;background:transparent;color:var(--muted);font-weight:600;font-size:.9rem;
+  padding:.5rem .95rem;border-radius:9px;cursor:pointer;font-family:var(--font);transition:all .2s ease;flex:1 1 auto;
+}
+.subnav button:hover{color:var(--ink)}
+.subnav button.active{background:var(--surface);color:var(--accent);box-shadow:var(--shadow)}
+.subpanel{display:none}
+.subpanel.active{display:block;animation:fade .35s ease}
+
+/* cards */
+.card{
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+  padding:1.2rem 1.3rem;margin:1rem 0;box-shadow:var(--shadow);
+  transition:background .55s ease,border-color .55s ease;
+}
+.card.tight{padding:1rem}
+.lead{font-size:1.08rem;color:var(--ink-soft)}
+.callout{
+  border-left:4px solid var(--accent2);background:var(--good-bg);
+  padding:.7rem 1rem;border-radius:0 10px 10px 0;margin:1rem 0;
+}
+.callout.warn{border-left-color:var(--bad);background:var(--bad-bg)}
+.callout .lbl{font-weight:700;color:var(--accent2);font-size:.82rem;text-transform:uppercase;letter-spacing:.5px}
+.callout.warn .lbl{color:var(--bad)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+@media(max-width:720px){.grid2{grid-template-columns:1fr}}
+
+.formula-box{background:var(--surface2);border:1px dashed var(--line-strong);border-radius:10px;padding:.4rem 1rem;margin:1rem 0;overflow-x:auto}
+
+/* ======================= SIMULAZIONI ======================= */
+.sim{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:1rem;margin:1.2rem 0;box-shadow:var(--shadow)}
+.sim h4{margin-top:.2em}
+.canvas-wrap{width:100%;background:var(--bg2);border-radius:10px;overflow:hidden;border:1px solid var(--line)}
+canvas{display:block;width:100%;touch-action:none}
+.controls{display:flex;flex-wrap:wrap;gap:1rem 1.4rem;margin-top:.9rem}
+.ctrl{flex:1 1 200px;min-width:170px}
+.ctrl label{display:flex;justify-content:space-between;font-size:.85rem;font-weight:600;color:var(--ink-soft);margin-bottom:.25rem}
+.ctrl label .val{color:var(--accent);font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;-webkit-appearance:none;height:6px;border-radius:6px;background:var(--line-strong);outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:var(--accent);cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.3);border:2px solid var(--surface)}
+input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:var(--accent);cursor:pointer;border:2px solid var(--surface)}
+.seg{display:inline-flex;background:var(--surface2);border:1px solid var(--line);border-radius:9px;padding:3px;gap:3px;flex-wrap:wrap}
+.seg button{border:none;background:transparent;padding:.4rem .8rem;border-radius:6px;cursor:pointer;font-weight:600;color:var(--muted);font-size:.85rem;font-family:var(--font)}
+.seg button.active{background:var(--surface);color:var(--accent);box-shadow:var(--shadow)}
+.readout{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.9rem}
+.chip{background:var(--surface2);border:1px solid var(--line);border-radius:20px;padding:.3rem .8rem;font-size:.82rem;font-weight:600;color:var(--ink-soft)}
+.chip b{color:var(--accent);font-variant-numeric:tabular-nums}
+.chip.hl{border-color:var(--accent2);color:var(--accent2)}
+.hint-txt{font-size:.85rem;color:var(--muted);margin-top:.6rem}
+.legend{display:flex;flex-wrap:wrap;gap:.8rem;margin-top:.7rem;font-size:.8rem;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:.35rem}
+.legend i{width:16px;height:3px;border-radius:2px;display:inline-block}
+
+/* ======================= ESERCIZI ======================= */
+.exercise{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:1.1rem 1.2rem;margin:1rem 0;box-shadow:var(--shadow)}
+.exercise .etag{display:inline-block;font-size:.72rem;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--accent);background:var(--good-bg);padding:.2rem .6rem;border-radius:20px;margin-bottom:.5rem}
+.exercise .etag.d2{color:var(--accent2)}
+.exercise .etag.d3{color:var(--accent3)}
+.ex-ans{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;margin-top:.8rem}
+.ex-ans input[type=text]{padding:.5rem .7rem;border:1px solid var(--line-strong);border-radius:8px;background:var(--surface2);color:var(--ink);font-size:.95rem;width:150px;font-family:var(--font)}
+.ex-ans input:focus{outline:2px solid var(--accent-soft);border-color:var(--accent)}
+.btn{border:none;border-radius:9px;padding:.5rem 1rem;font-weight:600;cursor:pointer;font-family:var(--font);font-size:.9rem;transition:transform .1s ease,background .2s ease}
+.btn:active{transform:translateY(1px)}
+.btn.primary{background:var(--accent);color:#fff}
+.btn.primary:hover{background:var(--accent-soft)}
+.btn.ghost{background:var(--surface2);color:var(--ink-soft);border:1px solid var(--line)}
+.btn.ghost:hover{border-color:var(--accent)}
+.hintbox{margin-top:.7rem}
+.hint{background:var(--surface2);border-left:3px solid var(--accent-soft);padding:.55rem .8rem;border-radius:0 8px 8px 0;margin:.5rem 0;font-size:.92rem;animation:fade .3s ease}
+.hint b{color:var(--accent)}
+.feedback{margin-top:.7rem;padding:.6rem .9rem;border-radius:9px;font-size:.92rem;display:none}
+.feedback.show{display:block;animation:fade .3s ease}
+.feedback.ok{background:var(--good-bg);border:1px solid var(--good);color:var(--good)}
+.feedback.no{background:var(--bad-bg);border:1px solid var(--bad);color:var(--bad)}
+.solution{margin-top:.6rem;padding:.7rem .9rem;background:var(--surface2);border:1px dashed var(--line-strong);border-radius:9px;display:none}
+.solution.show{display:block;animation:fade .3s ease}
+.solution .st{font-weight:700;color:var(--accent);font-size:.85rem;text-transform:uppercase;letter-spacing:.5px}
+.mc-opts{display:flex;flex-direction:column;gap:.5rem;margin-top:.7rem}
+.mc-opts label{display:flex;gap:.6rem;align-items:flex-start;padding:.55rem .8rem;border:1px solid var(--line);border-radius:9px;cursor:pointer;background:var(--surface2);transition:border-color .2s ease}
+.mc-opts label:hover{border-color:var(--accent-soft)}
+.mc-opts input{margin-top:.25rem}
+
+/* ======================= QUIZ ======================= */
+.quiz-q{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:1rem 1.1rem;margin:.9rem 0;box-shadow:var(--shadow)}
+.quiz-q .qn{font-weight:700;color:var(--accent);font-size:.8rem;letter-spacing:.5px;text-transform:uppercase}
+.quiz-q .qt{font-weight:600;margin:.3rem 0 .6rem;color:var(--ink)}
+.quiz-expl{margin-top:.6rem;padding:.55rem .8rem;border-radius:8px;font-size:.9rem;display:none}
+.quiz-expl.show{display:block}
+.quiz-expl.ok{background:var(--good-bg);color:var(--good);border:1px solid var(--good)}
+.quiz-expl.no{background:var(--bad-bg);color:var(--bad);border:1px solid var(--bad)}
+.quiz-num input{padding:.5rem .7rem;border:1px solid var(--line-strong);border-radius:8px;background:var(--surface2);color:var(--ink);width:140px;font-family:var(--font)}
+.quiz-bar{position:sticky;bottom:0;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:.8rem 1rem;margin-top:1.2rem;display:flex;gap:1rem;align-items:center;justify-content:space-between;flex-wrap:wrap;box-shadow:var(--shadow);z-index:5}
+.score{font-size:1.15rem;font-weight:700;font-family:var(--serif)}
+.score b{color:var(--accent)}
+.mc-opts.quiz label.correct{border-color:var(--good);background:var(--good-bg)}
+.mc-opts.quiz label.wrong{border-color:var(--bad);background:var(--bad-bg)}
+
+/* intro / hero */
+.hero{
+  background:linear-gradient(135deg,var(--surface),var(--surface2));
+  border:1px solid var(--line);border-radius:18px;padding:2rem 1.6rem;margin-bottom:1.4rem;
+  box-shadow:var(--shadow);position:relative;overflow:hidden;
+}
+.hero h1{font-size:2.1rem;margin:.1em 0 .3em;font-family:var(--serif)}
+.hero .sub{font-size:1.1rem;color:var(--muted);max-width:60ch}
+.hero .rays-deco{position:absolute;right:-40px;top:-40px;width:220px;height:220px;opacity:.5;pointer-events:none}
+@media(max-width:720px){.hero .rays-deco{display:none}.hero h1{font-size:1.6rem}}
+.timeline{border-left:2px solid var(--line-strong);margin:1rem 0 0;padding-left:1.2rem}
+.tl-item{margin-bottom:1rem;position:relative}
+.tl-item::before{content:"";position:absolute;left:-1.55rem;top:.35rem;width:11px;height:11px;border-radius:50%;background:var(--accent);border:2px solid var(--surface)}
+.tl-item .yr{font-weight:700;color:var(--accent2);font-family:var(--serif)}
+.pill-row{display:flex;flex-wrap:wrap;gap:.6rem;margin:1rem 0}
+.pill{background:var(--surface2);border:1px solid var(--line);border-radius:20px;padding:.4rem .9rem;font-size:.88rem;font-weight:600;color:var(--ink-soft)}
+.svgfig{background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:.5rem;margin:1rem 0}
+.svgfig svg{display:block;width:100%;height:auto}
+.figcap{font-size:.82rem;color:var(--muted);text-align:center;margin-top:.4rem;font-style:italic}
+.footer{max-width:var(--maxw);margin:0 auto;padding:2rem 1rem;color:var(--muted);font-size:.85rem;border-top:1px solid var(--line);text-align:center}
+table.data{width:100%;border-collapse:collapse;margin:1rem 0;font-size:.92rem}
+table.data th,table.data td{border:1px solid var(--line);padding:.45rem .6rem;text-align:left}
+table.data th{background:var(--surface2);font-family:var(--serif)}
+.next-hint{text-align:right;margin-top:1rem}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <div class="logo" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round">
+          <circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/>
+          <line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/>
+          <line x1="4.9" y1="4.9" x2="7" y2="7"/><line x1="17" y1="17" x2="19.1" y2="19.1"/>
+          <line x1="4.9" y1="19.1" x2="7" y2="17"/><line x1="17" y1="7" x2="19.1" y2="4.9"/>
+        </svg>
+      </div>
+      <div class="brand-txt">
+        <b>Ottica</b><span>Percorso interattivo · Liceo scientifico</span>
+      </div>
+    </div>
+    <button class="theme-toggle" id="themeToggle" aria-label="Cambia modalità giorno/notte" title="Giorno / Notte">
+      <span class="ic sun">☀</span><span class="ic moon">☾</span><span class="knob"></span>
+    </button>
+  </div>
+</header>
+
+<nav class="mainnav">
+  <div class="mainnav-inner" id="mainnav">
+    <button data-sec="intro" class="active">Introduzione</button>
+    <button data-sec="geom">Ottica geometrica</button>
+    <button data-sec="lenti">Lenti e specchi</button>
+    <button data-sec="onde">Ottica ondulatoria</button>
+  </div>
+</nav>
+
+<main>
+
+<!-- ============================================================ -->
+<!-- ==================== INTRODUZIONE ========================== -->
+<!-- ============================================================ -->
+<section class="section active" id="sec-intro">
+  <div class="hero">
+    <svg class="rays-deco" viewBox="0 0 200 200" fill="none" stroke="var(--ray)" stroke-width="2">
+      <circle cx="100" cy="100" r="30" stroke="var(--accent)"/>
+      <line x1="100" y1="0" x2="100" y2="60"/><line x1="100" y1="140" x2="100" y2="200"/>
+      <line x1="0" y1="100" x2="60" y2="100"/><line x1="140" y1="100" x2="200" y2="100"/>
+      <line x1="20" y1="20" x2="72" y2="72"/><line x1="128" y1="128" x2="180" y2="180"/>
+      <line x1="180" y1="20" x2="128" y2="72"/><line x1="72" y1="128" x2="20" y2="180"/>
+    </svg>
+    <h1>La luce: raggi, immagini e onde</h1>
+    <p class="sub">Un percorso per capire come si comporta la luce — dalla propagazione rettilinea che spiega le ombre, fino alle frange di interferenza che rivelano la sua natura ondulatoria. Due modelli, una sola luce.</p>
+  </div>
+
+  <div class="card">
+    <h2>Che cosa costruiremo insieme</h2>
+    <p class="lead">L'ottica è uno degli argomenti più <em>visivi</em> della fisica: quasi ogni fenomeno può essere raccontato con un disegno di raggi. Per questo, in questo percorso, i diagrammi non sono decorazioni ma lo strumento di lavoro principale. Impareremo a <strong>tracciare i raggi</strong> come si impara una procedura: passo dopo passo, finché diventa automatica.</p>
+    <div class="callout">
+      <div class="lbl">Una promessa</div>
+      La costruzione geometrica delle immagini è il punto in cui molti si perdono. Non è un colpo di intuizione: è una <strong>tecnica con regole precise</strong>. Se all'inizio ti sembra difficile è normale — con qualche ripetizione diventa meccanica, e questo percorso è pensato proprio per farti fare pratica guidata.
+    </div>
+
+    <h3>I tre capitoli</h3>
+    <div class="pill-row">
+      <span class="pill">1 · Ottica geometrica — riflessione, rifrazione, riflessione totale</span>
+      <span class="pill">2 · Lenti e specchi — immagini reali e virtuali, strumenti ottici</span>
+      <span class="pill">3 · Ottica ondulatoria — interferenza, diffrazione, potere risolutivo</span>
+    </div>
+    <p>Ogni capitolo è organizzato in quattro momenti: <strong>Teoria</strong> essenziale ma rigorosa, <strong>Simulazioni</strong> interattive in cui muovere tu i parametri, <strong>Esercizi</strong> a difficoltà crescente con suggerimenti che appaiono solo quando li chiedi, e un <strong>Quiz</strong> finale con correzione automatica e spiegazione degli errori.</p>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <h3>Due modelli della stessa luce</h3>
+      <p>Quando la luce incontra ostacoli e aperture <strong>molto più grandi</strong> della sua lunghezza d'onda, si comporta come se viaggiasse in linea retta: la descriviamo con i <em>raggi</em> (ottica geometrica). Quando invece incontra fenditure e dettagli <strong>confrontabili</strong> con la sua lunghezza d'onda, emergono interferenza e diffrazione: dobbiamo descriverla come <em>onda</em> (ottica ondulatoria).</p>
+      <p>Non sono due luci diverse né due teorie in competizione: sono <strong>due approssimazioni</strong> valide in regimi diversi. Tienilo a mente — collegheremo continuamente i due punti di vista.</p>
+    </div>
+    <div class="card">
+      <h3>Gli ordini di grandezza</h3>
+      <table class="data">
+        <tr><th>Grandezza</th><th>Valore tipico</th></tr>
+        <tr><td>Velocità della luce nel vuoto \(c\)</td><td>\(2{,}998\times10^{8}\ \mathrm{m/s}\)</td></tr>
+        <tr><td>Lunghezza d'onda visibile</td><td>\(400\!-\!700\ \mathrm{nm}\)</td></tr>
+        <tr><td>Indice di rifrazione aria</td><td>\(\approx 1{,}00\)</td></tr>
+        <tr><td>Indice di rifrazione acqua</td><td>\(1{,}33\)</td></tr>
+        <tr><td>Indice di rifrazione vetro</td><td>\(1{,}5\!-\!1{,}9\)</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Un po' di storia</h2>
+    <p>Capire da dove vengono queste idee aiuta a non prenderle come formule cadute dal cielo. Il dibattito tra "corpuscoli" e "onde" ha attraversato tre secoli.</p>
+    <div class="timeline">
+      <div class="tl-item"><span class="yr">~300 a.C.</span> — <strong>Euclide</strong> descrive la propagazione rettilinea e la legge della riflessione in termini geometrici.</div>
+      <div class="tl-item"><span class="yr">~140 d.C. / 984</span> — <strong>Tolomeo</strong> e poi <strong>Ibn Sahl</strong> studiano la rifrazione; Ibn Sahl formula di fatto la relazione oggi nota come legge di Snell.</div>
+      <div class="tl-item"><span class="yr">1621</span> — <strong>Willebrord Snell</strong> riscopre la legge quantitativa della rifrazione; <strong>Descartes</strong> la pubblica in forma moderna.</div>
+      <div class="tl-item"><span class="yr">1678</span> — <strong>Christiaan Huygens</strong> propone il modello ondulatorio e il principio che porta il suo nome.</div>
+      <div class="tl-item"><span class="yr">1704</span> — <strong>Isaac Newton</strong> difende il modello corpuscolare nella sua <em>Opticks</em>; scompone la luce bianca con il prisma.</div>
+      <div class="tl-item"><span class="yr">1801</span> — <strong>Thomas Young</strong> realizza l'esperimento della doppia fenditura: le frange dimostrano l'interferenza, sostegno decisivo al modello ondulatorio.</div>
+      <div class="tl-item"><span class="yr">1815</span> — <strong>Augustin-Jean Fresnel</strong> costruisce la teoria matematica della diffrazione.</div>
+      <div class="tl-item"><span class="yr">1865</span> — <strong>James Clerk Maxwell</strong> mostra che la luce è un'onda elettromagnetica.</div>
+      <div class="tl-item"><span class="yr">1905</span> — <strong>Albert Einstein</strong>, con l'effetto fotoelettrico, riporta in gioco i "quanti" di luce: la storia dei due modelli, in un certo senso, ricomincia.</div>
+    </div>
+    <div class="callout">
+      <div class="lbl">Come usare questo percorso</div>
+      Non serve leggere tutto di seguito. Puoi partire da un capitolo, provare subito la simulazione, e tornare alla teoria quando una domanda ti nasce spontanea. Gli esercizi e i quiz servono a te per capire dove sei — sbagliare fa parte del metodo.
+    </div>
+  </div>
+
+  <div class="next-hint">
+    <button class="btn primary" onclick="goSec('geom')">Inizia dall'ottica geometrica →</button>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- ==================== OTTICA GEOMETRICA ===================== -->
+<!-- ============================================================ -->
+<section class="section" id="sec-geom">
+  <div class="subnav" data-group="geom">
+    <button data-sub="geom-teo" class="active">Teoria</button>
+    <button data-sub="geom-sim">Simulazione</button>
+    <button data-sub="geom-ese">Esercizi</button>
+    <button data-sub="geom-quiz">Quiz</button>
+  </div>
+
+  <!-- ---- TEORIA ---- -->
+  <div class="subpanel active" id="geom-teo">
+    <h2>Ottica geometrica</h2>
+    <p class="lead">Quando gli ostacoli sono grandi rispetto alla lunghezza d'onda, la luce si comporta come se fosse fatta di raggi rettilinei. Con pochi principi geometrici spieghiamo ombre, specchi, rifrazione e la sorprendente riflessione totale.</p>
+
+    <div class="card">
+      <h3>Natura e propagazione rettilinea</h3>
+      <p>In un mezzo <strong>omogeneo e trasparente</strong> la luce si propaga in linea retta. Rappresentiamo la direzione di propagazione con una linea orientata, il <strong>raggio luminoso</strong>. È un'idealizzazione utilissima: un fascio reale ha una larghezza, ma finché questa è grande rispetto alla lunghezza d'onda possiamo ragionare sui raggi.</p>
+      <p>La propagazione rettilinea spiega direttamente le <strong>ombre nette</strong> e la formazione di immagini nella camera oscura. È anche il motivo per cui, di default, disegniamo tutto con la riga.</p>
+    </div>
+
+    <div class="card">
+      <h3>Riflessione</h3>
+      <p>Quando un raggio incontra una superficie, parte della luce torna indietro. Misurando gli angoli <strong>rispetto alla normale</strong> (la perpendicolare alla superficie nel punto di incidenza) valgono le <strong>leggi della riflessione</strong>:</p>
+      <ul>
+        <li>il raggio incidente, la normale e il raggio riflesso giacciono nello stesso piano;</li>
+        <li>l'angolo di incidenza è uguale all'angolo di riflessione: \(\hat\theta_i=\hat\theta_r\).</li>
+      </ul>
+      <div class="svgfig">
+        <svg viewBox="0 0 400 200" role="img" aria-label="Riflessione su specchio piano">
+          <line x1="20" y1="150" x2="380" y2="150" stroke="var(--line-strong)" stroke-width="3"/>
+          <g stroke="var(--line-strong)" stroke-width="1" stroke-dasharray="4 4">
+            <line x1="200" y1="30" x2="200" y2="150"/>
+          </g>
+          <line x1="80" y1="60" x2="200" y2="150" stroke="var(--ray)" stroke-width="2.5" marker-end="url(#arrG)"/>
+          <line x1="200" y1="150" x2="320" y2="60" stroke="var(--ray)" stroke-width="2.5" marker-end="url(#arrG)"/>
+          <text x="120" y="95" fill="var(--ink-soft)" font-size="13">incidente</text>
+          <text x="250" y="95" fill="var(--ink-soft)" font-size="13">riflesso</text>
+          <text x="205" y="45" fill="var(--muted)" font-size="12">normale</text>
+          <text x="168" y="140" fill="var(--accent2)" font-size="13">θ_i</text>
+          <text x="215" y="140" fill="var(--accent2)" font-size="13">θ_r</text>
+          <defs><marker id="arrG" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--ray)"/></marker></defs>
+        </svg>
+        <div class="figcap">Riflessione su specchio piano: gli angoli si misurano dalla normale.</div>
+      </div>
+      <p>In uno <strong>specchio piano</strong> l'immagine è <em>virtuale</em> (si forma dietro lo specchio, dove i raggi non passano davvero ma sembrano provenire), <em>dritta</em>, delle stesse dimensioni e simmetrica rispetto alla superficie: sta tanto dietro quanto l'oggetto sta davanti.</p>
+    </div>
+
+    <div class="card">
+      <h3>Rifrazione e legge di Snell</h3>
+      <p>Passando da un mezzo trasparente a un altro, la luce cambia velocità e, se non incide perpendicolarmente, cambia direzione: si <strong>rifrange</strong>. A ogni mezzo associamo l'<strong>indice di rifrazione</strong></p>
+      <div class="formula-box">\[ n=\frac{c}{v} \ge 1 \]</div>
+      <p>dove \(v\) è la velocità della luce nel mezzo. Un indice più alto significa luce più "lenta" e mezzo otticamente più denso. Vale la <strong>legge di Snell</strong>:</p>
+      <div class="formula-box">\[ n_1\,\sin\hat\theta_1 = n_2\,\sin\hat\theta_2 \]</div>
+      <p>Conseguenza da ricordare: passando a un mezzo più denso (\(n_2>n_1\)) il raggio si <strong>avvicina</strong> alla normale; passando a uno meno denso se ne <strong>allontana</strong>.</p>
+      <div class="callout">
+        <div class="lbl">Perché cambia direzione</div>
+        Immagina un fronte d'onda obliquo che entra nel vetro: il bordo che tocca per primo il mezzo denso rallenta prima dell'altro, e tutto il fronte "sterza". È lo stesso motivo per cui un carrello sterza se una ruota rallenta.
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Riflessione totale e angolo limite</h3>
+      <p>Se la luce va da un mezzo <strong>più denso a uno meno denso</strong> (\(n_1>n_2\)), il raggio rifratto si allontana dalla normale. Aumentando \(\hat\theta_1\) si arriva a un angolo per cui il rifratto sfiora la superficie (\(\hat\theta_2=90^\circ\)): è l'<strong>angolo limite</strong> \(\hat\theta_L\).</p>
+      <div class="formula-box">\[ \sin\hat\theta_L=\frac{n_2}{n_1}\qquad(n_1>n_2) \]</div>
+      <p>Oltre l'angolo limite non c'è più raggio rifratto: <strong>tutta</strong> la luce viene riflessa. Questa è la <strong>riflessione totale</strong>, e non è un'idealizzazione — è ciò che rende possibili le <strong>fibre ottiche</strong>, dove la luce rimbalza intrappolata lungo il nucleo di vetro.</p>
+      <div class="grid2">
+        <div class="callout"><div class="lbl">Applicazioni</div>Fibre ottiche (telecomunicazioni, endoscopia), prismi a riflessione totale in binocoli e reflex, brillantezza dei diamanti (indice altissimo, \(n\approx2{,}4\), angolo limite piccolo).</div>
+        <div class="callout"><div class="lbl">Fenomeni naturali</div>I <strong>miraggi</strong> nascono da strati d'aria a temperatura diversa (quindi indice diverso): la luce si incurva progressivamente fino a una riflessione che ci fa "vedere il cielo" sull'asfalto. Il <strong>prisma</strong> separa i colori perché \(n\) dipende leggermente dalla lunghezza d'onda (dispersione).</div>
+      </div>
+    </div>
+    <div class="next-hint"><button class="btn primary" onclick="goSub('geom','geom-sim')">Prova la simulazione →</button></div>
+  </div>
+
+  <!-- ---- SIMULAZIONE ---- -->
+  <div class="subpanel" id="geom-sim">
+    <h2>Simulazione · Rifrazione e riflessione totale</h2>
+    <p class="lead">Sposta l'angolo di incidenza e cambia gli indici dei due mezzi. Osserva come il raggio rifratto si piega e, quando \(n_1>n_2\), come scatta la riflessione totale superato l'angolo limite.</p>
+    <div class="sim">
+      <div class="canvas-wrap"><canvas id="snellCanvas" height="440"></canvas></div>
+      <div class="controls">
+        <div class="ctrl">
+          <label>Angolo di incidenza \(\theta_1\) <span class="val" id="snAngV">40°</span></label>
+          <input type="range" id="snAng" min="0" max="89" value="40" step="1">
+        </div>
+        <div class="ctrl">
+          <label>Indice mezzo superiore \(n_1\) <span class="val" id="snN1V">1.50</span></label>
+          <input type="range" id="snN1" min="1" max="2.4" value="1.5" step="0.01">
+        </div>
+        <div class="ctrl">
+          <label>Indice mezzo inferiore \(n_2\) <span class="val" id="snN2V">1.00</span></label>
+          <input type="range" id="snN2" min="1" max="2.4" value="1.0" step="0.01">
+        </div>
+      </div>
+      <div class="readout" id="snReadout"></div>
+      <div class="legend">
+        <span><i style="background:var(--ray)"></i> raggio incidente / riflesso</span>
+        <span><i style="background:var(--accent2)"></i> raggio rifratto</span>
+        <span><i style="background:var(--line-strong)"></i> normale</span>
+      </div>
+      <div class="hint-txt">Suggerimento: metti \(n_1=1{,}50\) (vetro) e \(n_2=1{,}00\) (aria), poi aumenta lentamente l'angolo fino a superare l'angolo limite (~41,8°).</div>
+    </div>
+  </div>
+
+  <!-- ---- ESERCIZI ---- -->
+  <div class="subpanel" id="geom-ese">
+    <h2>Esercizi guidati</h2>
+    <p class="lead">Difficoltà crescente. I suggerimenti compaiono solo quando li chiedi: prova prima da solo, poi svela un indizio alla volta.</p>
+    <div id="geom-ese-list"></div>
+  </div>
+
+  <!-- ---- QUIZ ---- -->
+  <div class="subpanel" id="geom-quiz">
+    <h2>Quiz · Ottica geometrica</h2>
+    <p class="lead">10 domande teoriche e 5 problemi numerici. Rispondi e premi "Correggi": otterrai il punteggio e la spiegazione di ogni errore.</p>
+    <div id="geom-quiz-list"></div>
+    <div class="quiz-bar">
+      <div class="score" id="geom-quiz-score">Punteggio: <b>—</b></div>
+      <div><button class="btn ghost" onclick="resetQuiz('geom')">Azzera</button>
+      <button class="btn primary" onclick="gradeQuiz('geom')">Correggi</button></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- ==================== LENTI E SPECCHI ======================= -->
+<!-- ============================================================ -->
+<section class="section" id="sec-lenti">
+  <div class="subnav" data-group="lenti">
+    <button data-sub="lenti-teo" class="active">Teoria</button>
+    <button data-sub="lenti-sim">Simulazione</button>
+    <button data-sub="lenti-ese">Esercizi</button>
+    <button data-sub="lenti-quiz">Quiz</button>
+  </div>
+
+  <div class="subpanel active" id="lenti-teo">
+    <h2>Lenti e specchi</h2>
+    <p class="lead">Specchi curvi e lenti sottili formano immagini. Il cuore di tutto è la <strong>costruzione con i raggi principali</strong>: una procedura, non un'intuizione. Impariamola con calma.</p>
+
+    <div class="card">
+      <h3>Specchi curvi</h3>
+      <p>Uno specchio <strong>concavo</strong> (curvatura verso l'osservatore) fa convergere i raggi; uno <strong>convesso</strong> li fa divergere. Il punto in cui i raggi paralleli all'asse convergono (o da cui sembrano divergere) è il <strong>fuoco</strong> \(F\), a distanza focale</p>
+      <div class="formula-box">\[ f=\frac{R}{2} \]</div>
+      <p>dove \(R\) è il raggio di curvatura. Il centro di curvatura \(C\) sta a distanza \(R=2f\).</p>
+      <h4>I raggi principali (specchio concavo)</h4>
+      <ol>
+        <li>Un raggio <strong>parallelo</strong> all'asse si riflette passando per il <strong>fuoco</strong> \(F\).</li>
+        <li>Un raggio che passa per il <strong>fuoco</strong> \(F\) si riflette <strong>parallelo</strong> all'asse.</li>
+        <li>Un raggio che passa per il <strong>centro</strong> \(C\) torna su sé stesso (incide perpendicolarmente).</li>
+      </ol>
+      <p>Ne bastano <strong>due</strong>: la loro intersezione è la punta dell'immagine.</p>
+    </div>
+
+    <div class="card">
+      <h3>Lenti sottili</h3>
+      <p>Una lente <strong>convergente</strong> (bordi sottili, più spessa al centro) concentra i raggi paralleli nel fuoco; una lente <strong>divergente</strong> (più spessa ai bordi) li fa divergere come se venissero dal fuoco.</p>
+      <h4>I raggi principali (lente convergente)</h4>
+      <ol>
+        <li>Raggio <strong>parallelo</strong> all'asse → esce passando per il <strong>fuoco</strong> \(F'\) dal lato opposto.</li>
+        <li>Raggio per il <strong>centro</strong> della lente → prosegue <strong>indeviato</strong>.</li>
+        <li>Raggio per il <strong>fuoco</strong> \(F\) davanti → esce <strong>parallelo</strong> all'asse.</li>
+      </ol>
+      <div class="callout">
+        <div class="lbl">La regola d'oro contro lo smarrimento</div>
+        Quando non sai da dove partire: disegna sempre <strong>prima</strong> il raggio parallelo e il raggio centrale. Sono i due più facili da tracciare e la loro intersezione ti dà già l'immagine. Il terzo raggio serve solo come verifica. Ripeti questa sequenza finché diventa un automatismo — è normale doverla fare molte volte.
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Equazione dei punti coniugati e ingrandimento</h3>
+      <p>Detta \(p\) la distanza dell'oggetto e \(q\) quella dell'immagine dal vertice (o dal centro della lente), e \(f\) la distanza focale:</p>
+      <div class="formula-box">\[ \frac{1}{p}+\frac{1}{q}=\frac{1}{f} \]</div>
+      <p>L'<strong>ingrandimento</strong> lineare è</p>
+      <div class="formula-box">\[ G=\frac{h_i}{h_o}=-\frac{q}{p} \]</div>
+      <p>Il segno racconta la storia dell'immagine. Con la convenzione usata in questo percorso:</p>
+      <table class="data">
+        <tr><th>Situazione</th><th>Segno di \(q\)</th><th>Segno di \(G\)</th><th>Immagine</th></tr>
+        <tr><td>Immagine reale</td><td>\(q>0\)</td><td>\(G<0\)</td><td>reale, capovolta</td></tr>
+        <tr><td>Immagine virtuale</td><td>\(q<0\)</td><td>\(G>0\)</td><td>virtuale, dritta</td></tr>
+        <tr><td>\(|G|>1\)</td><td>—</td><td>—</td><td>ingrandita</td></tr>
+        <tr><td>\(|G|<1\)</td><td>—</td><td>—</td><td>rimpicciolita</td></tr>
+      </table>
+      <div class="callout warn">
+        <div class="lbl">Attenzione ai segni</div>
+        Le convenzioni sui segni variano da libro a libro. L'importante è <strong>essere coerenti</strong>: qui prendiamo \(f>0\) per elementi convergenti (lente convergente, specchio concavo) e \(f<0\) per quelli divergenti; \(q>0\) indica immagine reale.
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Cenni sugli strumenti ottici</h3>
+      <div class="grid2">
+        <div>
+          <h4>L'occhio</h4>
+          <p>Il cristallino è una lente convergente a focale variabile (accomodamento): mette a fuoco sulla retina oggetti a distanze diverse. Miopia e ipermetropia si correggono con lenti divergenti o convergenti.</p>
+          <h4>Lente d'ingrandimento</h4>
+          <p>Una lente convergente con l'oggetto <strong>entro</strong> il fuoco (\(p<f\)) dà un'immagine virtuale, dritta e ingrandita.</p>
+        </div>
+        <div>
+          <h4>Microscopio</h4>
+          <p>Due lenti convergenti: l'<em>obiettivo</em> forma un'immagine reale ingrandita, l'<em>oculare</em> la ingrandisce ancora come una lente d'ingrandimento. Gli ingrandimenti si moltiplicano.</p>
+          <h4>Cannocchiale</h4>
+          <p>Per oggetti lontani: l'obiettivo (focale lunga) forma l'immagine nel suo fuoco, l'oculare (focale corta) la osserva. L'ingrandimento angolare vale \(\approx f_{ob}/f_{oc}\).</p>
+        </div>
+      </div>
+    </div>
+    <div class="next-hint"><button class="btn primary" onclick="goSub('lenti','lenti-sim')">Vai al banco ottico →</button></div>
+  </div>
+
+  <div class="subpanel" id="lenti-sim">
+    <h2>Simulazione · Banco ottico</h2>
+    <p class="lead">Trascina l'<strong>oggetto</strong> lungo l'asse (o usa lo slider) e cambia la distanza focale. I raggi principali e l'immagine — reale/virtuale, dritta/capovolta — si aggiornano in tempo reale. Scegli anche il tipo di elemento.</p>
+    <div class="sim">
+      <div class="canvas-wrap"><canvas id="benchCanvas" height="440"></canvas></div>
+      <div class="controls">
+        <div class="ctrl" style="flex:1 1 100%">
+          <label style="margin-bottom:.4rem">Elemento ottico</label>
+          <div class="seg" id="benchType">
+            <button data-t="lensC" class="active">Lente convergente</button>
+            <button data-t="lensD">Lente divergente</button>
+            <button data-t="mirC">Specchio concavo</button>
+            <button data-t="mirX">Specchio convesso</button>
+          </div>
+        </div>
+        <div class="ctrl">
+          <label>Posizione oggetto \(p\) <span class="val" id="bpV">3.0 f</span></label>
+          <input type="range" id="bp" min="0.2" max="6" value="2.5" step="0.05">
+        </div>
+        <div class="ctrl">
+          <label>Distanza focale \(|f|\) <span class="val" id="bfV">80</span></label>
+          <input type="range" id="bf" min="40" max="140" value="80" step="1">
+        </div>
+        <div class="ctrl">
+          <label>Altezza oggetto <span class="val" id="bhV">60</span></label>
+          <input type="range" id="bh" min="20" max="90" value="60" step="1">
+        </div>
+      </div>
+      <div class="readout" id="benchReadout"></div>
+      <div class="legend">
+        <span><i style="background:var(--ray)"></i> raggi luminosi</span>
+        <span><i style="background:var(--accent2)"></i> fuochi F</span>
+        <span><i style="background:var(--accent3)"></i> oggetto / immagine</span>
+        <span><i style="background:var(--muted)"></i> prolungamenti (tratteggio) = virtuale</span>
+      </div>
+      <div class="hint-txt">Prova: con la lente convergente porta l'oggetto <em>dentro</em> il fuoco (\(p<f\)) e osserva l'immagine virtuale, dritta e ingrandita — è la lente d'ingrandimento.</div>
+    </div>
+  </div>
+
+  <div class="subpanel" id="lenti-ese">
+    <h2>Esercizi guidati</h2>
+    <p class="lead">Concentrati sul metodo: scrivi i dati, applica l'equazione dei punti coniugati, interpreta i segni.</p>
+    <div id="lenti-ese-list"></div>
+  </div>
+
+  <div class="subpanel" id="lenti-quiz">
+    <h2>Quiz · Lenti e specchi</h2>
+    <p class="lead">10 domande teoriche e 5 problemi numerici.</p>
+    <div id="lenti-quiz-list"></div>
+    <div class="quiz-bar">
+      <div class="score" id="lenti-quiz-score">Punteggio: <b>—</b></div>
+      <div><button class="btn ghost" onclick="resetQuiz('lenti')">Azzera</button>
+      <button class="btn primary" onclick="gradeQuiz('lenti')">Correggi</button></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- ==================== OTTICA ONDULATORIA ==================== -->
+<!-- ============================================================ -->
+<section class="section" id="sec-onde">
+  <div class="subnav" data-group="onde">
+    <button data-sub="onde-teo" class="active">Teoria</button>
+    <button data-sub="onde-sim">Simulazioni</button>
+    <button data-sub="onde-ese">Esercizi</button>
+    <button data-sub="onde-quiz">Quiz</button>
+  </div>
+
+  <div class="subpanel active" id="onde-teo">
+    <h2>Ottica ondulatoria</h2>
+    <p class="lead">Con aperture confrontabili alla lunghezza d'onda, il modello a raggi non basta più. Interferenza e diffrazione rivelano che la luce è un'onda — ed è qui che, per una volta, il colore diventa fisica: la lunghezza d'onda <em>è</em> il colore.</p>
+
+    <div class="card">
+      <h3>Natura ondulatoria della luce</h3>
+      <p>La luce è un'onda elettromagnetica: velocità \(c\), frequenza \(f\) e lunghezza d'onda \(\lambda\) legate da \(c=\lambda f\). Il modello geometrico è il <strong>limite</strong> di quello ondulatorio quando \(\lambda\) è trascurabile rispetto agli oggetti. Ecco il collegamento tra i due capitoli precedenti e questo: <strong>stessa luce, scala diversa</strong>.</p>
+      <p>Due onde che si sovrappongono si sommano punto per punto (<strong>principio di sovrapposizione</strong>). Se arrivano <em>in fase</em> si rinforzano (interferenza <strong>costruttiva</strong>); se arrivano <em>in opposizione di fase</em> si annullano (interferenza <strong>distruttiva</strong>). Perché le frange siano stabili serve luce <strong>coerente</strong>.</p>
+    </div>
+
+    <div class="card">
+      <h3>La doppia fenditura di Young</h3>
+      <p>Due fenditure vicine, illuminate da luce coerente, si comportano come due sorgenti in fase. Su uno schermo lontano \(L\) le onde percorrono cammini diversi. La <strong>differenza di cammino ottico</strong> verso un punto a distanza angolare \(\theta\) è</p>
+      <div class="formula-box">\[ \Delta = d\,\sin\theta \]</div>
+      <p>con \(d\) distanza tra le fenditure. Si ha interferenza costruttiva (frange <strong>chiare</strong>) quando \(\Delta\) è un multiplo intero di \(\lambda\), distruttiva (frange <strong>scure</strong>) quando è un multiplo dispari di mezza lunghezza d'onda:</p>
+      <div class="formula-box">\[ d\sin\theta = m\lambda \quad(\text{max}) \qquad d\sin\theta=\left(m+\tfrac12\right)\lambda\quad(\text{min}) \]</div>
+      <p>Per piccoli angoli (\(\sin\theta\approx\tan\theta=y/L\)) le frange chiare cadono a</p>
+      <div class="formula-box">\[ y_m=\frac{m\lambda L}{d}\qquad\Rightarrow\qquad \Delta y=\frac{\lambda L}{d} \]</div>
+      <p>\(\Delta y\) è l'<strong>interfrangia</strong>, la distanza costante tra frange consecutive. Nota bene: fenditure <strong>più vicine</strong> (d piccolo) → frange <strong>più larghe</strong>. È un rapporto inverso, e la simulazione te lo farà vedere.</p>
+    </div>
+
+    <div class="card">
+      <h3>Diffrazione</h3>
+      <p>Anche una <strong>singola</strong> fenditura, se stretta, spande la luce: è la <strong>diffrazione</strong>. Il pattern ha un massimo centrale largo e brillante e massimi laterali molto più deboli. I <strong>minimi</strong> di diffrazione stanno dove</p>
+      <div class="formula-box">\[ a\,\sin\theta=m\lambda\qquad(m=\pm1,\pm2,\dots) \]</div>
+      <p>con \(a\) larghezza della fenditura. Attenzione: qui \(m\) dà i <strong>minimi</strong> (al contrario della doppia fenditura). Conseguenza fondamentale: fenditura <strong>più stretta</strong> → massimo centrale <strong>più largo</strong>. La luce "si allarga" tanto più quanto più la si costringe.</p>
+      <h4>Reticolo di diffrazione</h4>
+      <p>Molte fenditure equidistanti (migliaia per millimetro) danno massimi principali strettissimi e luminosi, nelle direzioni \(d\sin\theta=m\lambda\). Poiché la posizione dipende da \(\lambda\), il reticolo <strong>separa i colori</strong> con altissima precisione: è lo strumento della spettroscopia.</p>
+    </div>
+
+    <div class="card">
+      <h3>Potere risolutivo</h3>
+      <p>La diffrazione pone un limite invalicabile alla nitidezza di ogni strumento: due sorgenti vicine danno macchie di diffrazione che, se troppo vicine, si fondono. Per un'apertura circolare di diametro \(D\) il <strong>criterio di Rayleigh</strong> fissa l'angolo minimo risolvibile a</p>
+      <div class="formula-box">\[ \theta_{\min}\approx 1{,}22\,\frac{\lambda}{D} \]</div>
+      <p>Ecco perché i telescopi hanno specchi enormi (D grande → \(\theta_{\min}\) piccolo → più dettaglio) e perché il microscopio ottico non può distinguere dettagli molto più piccoli di \(\lambda\). Il modello ondulatorio non è un dettaglio accademico: <strong>decide</strong> cosa possiamo vedere.</p>
+    </div>
+    <div class="next-hint"><button class="btn primary" onclick="goSub('onde','onde-sim')">Prova le simulazioni →</button></div>
+  </div>
+
+  <div class="subpanel" id="onde-sim">
+    <h2>Simulazioni · Interferenza e diffrazione</h2>
+    <p class="lead">Qui la palette cambia di proposito: il colore rappresenta la <strong>lunghezza d'onda reale</strong>. È l'unico punto del percorso in cui usiamo lo spettro cromatico, perché qui il colore è fisica.</p>
+
+    <div class="sim">
+      <h4>Doppia fenditura di Young</h4>
+      <p style="margin:.2rem 0 .8rem;color:var(--muted);font-size:.92rem">Regola lunghezza d'onda e distanza tra le fenditure: guarda il pattern e l'interfrangia costruirsi progressivamente.</p>
+      <div class="canvas-wrap"><canvas id="youngCanvas" height="300"></canvas></div>
+      <div class="controls">
+        <div class="ctrl">
+          <label>Lunghezza d'onda \(\lambda\) <span class="val" id="yWlV">550 nm</span></label>
+          <input type="range" id="yWl" min="400" max="700" value="550" step="1">
+        </div>
+        <div class="ctrl">
+          <label>Distanza fenditure \(d\) <span class="val" id="yDV">0.20 mm</span></label>
+          <input type="range" id="yD" min="0.05" max="0.5" value="0.2" step="0.005">
+        </div>
+      </div>
+      <div class="readout" id="youngReadout"></div>
+    </div>
+
+    <div class="sim">
+      <h4>Diffrazione da singola fenditura</h4>
+      <p style="margin:.2rem 0 .8rem;color:var(--muted);font-size:.92rem">Stringi la fenditura e osserva il massimo centrale allargarsi: meno spazio alla luce, più diffrazione.</p>
+      <div class="canvas-wrap"><canvas id="diffCanvas" height="300"></canvas></div>
+      <div class="controls">
+        <div class="ctrl">
+          <label>Lunghezza d'onda \(\lambda\) <span class="val" id="dWlV">550 nm</span></label>
+          <input type="range" id="dWl" min="400" max="700" value="550" step="1">
+        </div>
+        <div class="ctrl">
+          <label>Larghezza fenditura \(a\) <span class="val" id="dAV">0.10 mm</span></label>
+          <input type="range" id="dA" min="0.02" max="0.3" value="0.1" step="0.002">
+        </div>
+      </div>
+      <div class="readout" id="diffReadout"></div>
+    </div>
+  </div>
+
+  <div class="subpanel" id="onde-ese">
+    <h2>Esercizi guidati</h2>
+    <p class="lead">Interfrangia, differenza di cammino, diffrazione. Cura le unità di misura: nanometri, millimetri e metri devono tornare.</p>
+    <div id="onde-ese-list"></div>
+  </div>
+
+  <div class="subpanel" id="onde-quiz">
+    <h2>Quiz · Ottica ondulatoria</h2>
+    <p class="lead">10 domande teoriche e 5 problemi numerici.</p>
+    <div id="onde-quiz-list"></div>
+    <div class="quiz-bar">
+      <div class="score" id="onde-quiz-score">Punteggio: <b>—</b></div>
+      <div><button class="btn ghost" onclick="resetQuiz('onde')">Azzera</button>
+      <button class="btn primary" onclick="gradeQuiz('onde')">Correggi</button></div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="footer">
+  Percorso interattivo di Ottica · materiale didattico per il liceo scientifico ·
+  ottica geometrica, lenti e specchi, ottica ondulatoria.
+</footer>
+
+<script>
+/* ==================================================================
+   NAVIGAZIONE
+   ================================================================== */
+const mainBtns = document.querySelectorAll('#mainnav button');
+function goSec(sec){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.getElementById('sec-'+sec).classList.add('active');
+  mainBtns.forEach(b=>b.classList.toggle('active', b.dataset.sec===sec));
+  window.scrollTo({top:0,behavior:'smooth'});
+  // ridisegna eventuali canvas visibili
+  requestAnimationFrame(resizeAllCanvases);
+}
+mainBtns.forEach(b=>b.addEventListener('click',()=>goSec(b.dataset.sec)));
+
+document.querySelectorAll('.subnav').forEach(nav=>{
+  nav.querySelectorAll('button').forEach(btn=>{
+    btn.addEventListener('click',()=>goSub(nav.dataset.group, btn.dataset.sub));
+  });
+});
+function goSub(group, sub){
+  const nav = document.querySelector('.subnav[data-group="'+group+'"]');
+  nav.querySelectorAll('button').forEach(b=>b.classList.toggle('active', b.dataset.sub===sub));
+  document.getElementById('sec-'+group).querySelectorAll('.subpanel').forEach(p=>{
+    p.classList.toggle('active', p.id===sub);
+  });
+  requestAnimationFrame(resizeAllCanvases);
+}
+
+/* ==================================================================
+   TEMA GIORNO / NOTTE
+   ================================================================== */
+const themeToggle = document.getElementById('themeToggle');
+function setTheme(t){
+  document.documentElement.setAttribute('data-theme', t);
+  try{localStorage.setItem('ottica-theme',t);}catch(e){}
+  // ridisegna canvas per aggiornare i colori letti da CSS
+  requestAnimationFrame(()=>{ requestAnimationFrame(redrawAll); });
+}
+themeToggle.addEventListener('click',()=>{
+  const cur = document.documentElement.getAttribute('data-theme')==='night'?'day':'night';
+  setTheme(cur);
+});
+(function(){
+  let t='day';
+  try{t=localStorage.getItem('ottica-theme')|| (matchMedia('(prefers-color-scheme: dark)').matches?'night':'day');}catch(e){}
+  document.documentElement.setAttribute('data-theme', t);
+})();
+function css(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
+
+/* ==================================================================
+   UTILITY CANVAS
+   ================================================================== */
+const canvasRegistry = [];
+function setupCanvas(id, draw){
+  const cv = document.getElementById(id);
+  const ctx = cv.getContext('2d');
+  const rec = {cv, ctx, draw};
+  canvasRegistry.push(rec);
+  return rec;
+}
+function fitCanvas(rec){
+  const {cv} = rec;
+  const rect = cv.getBoundingClientRect();
+  const cssW = rect.width || cv.parentElement.clientWidth || 600;
+  const cssH = parseInt(cv.getAttribute('height'))||300;
+  const dpr = Math.min(window.devicePixelRatio||1, 2);
+  cv.width = Math.round(cssW*dpr);
+  cv.height = Math.round(cssH*dpr);
+  cv.style.height = cssH+'px';
+  rec.ctx.setTransform(dpr,0,0,dpr,0,0);
+  rec.W = cssW; rec.H = cssH;
+}
+function resizeAllCanvases(){
+  canvasRegistry.forEach(rec=>{
+    if(rec.cv.offsetParent!==null){ fitCanvas(rec); rec.draw(); }
+  });
+}
+function redrawAll(){
+  canvasRegistry.forEach(rec=>{ if(rec.cv.offsetParent!==null){ rec.draw(); } });
+}
+let rt;
+window.addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(resizeAllCanvases,120);});
+
+/* helper disegno */
+function line(ctx,x1,y1,x2,y2,color,w,dash){
+  ctx.save();ctx.beginPath();ctx.strokeStyle=color;ctx.lineWidth=w||2;
+  ctx.setLineDash(dash||[]);ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();ctx.restore();
+}
+function arrow(ctx,x1,y1,x2,y2,color,w){
+  line(ctx,x1,y1,x2,y2,color,w);
+  const a=Math.atan2(y2-y1,x2-x1),s=8;
+  ctx.save();ctx.fillStyle=color;ctx.beginPath();
+  ctx.moveTo(x2,y2);ctx.lineTo(x2-s*Math.cos(a-.4),y2-s*Math.sin(a-.4));
+  ctx.lineTo(x2-s*Math.cos(a+.4),y2-s*Math.sin(a+.4));ctx.closePath();ctx.fill();ctx.restore();
+}
+function dot(ctx,x,y,r,color){ctx.save();ctx.beginPath();ctx.fillStyle=color;ctx.arc(x,y,r,0,7);ctx.fill();ctx.restore();}
+function label(ctx,txt,x,y,color,size,align){
+  ctx.save();ctx.fillStyle=color;ctx.font=(size||12)+'px '+getComputedStyle(document.body).fontFamily;
+  ctx.textAlign=align||'left';ctx.fillText(txt,x,y);ctx.restore();
+}
+
+/* wavelength (nm) -> rgb (solo sezione onde) */
+function wl2rgb(wl){
+  let r=0,g=0,b=0;
+  if(wl>=380&&wl<440){r=-(wl-440)/(440-380);b=1;}
+  else if(wl<490){g=(wl-440)/(490-440);b=1;}
+  else if(wl<510){g=1;b=-(wl-510)/(510-490);}
+  else if(wl<580){r=(wl-510)/(580-510);g=1;}
+  else if(wl<645){r=1;g=-(wl-645)/(645-580);}
+  else if(wl<=780){r=1;}
+  let f=1;
+  if(wl<420)f=0.3+0.7*(wl-380)/40;
+  else if(wl>700)f=0.3+0.7*(780-wl)/80;
+  const g_=v=>Math.round(255*Math.pow(Math.max(0,v)*f,0.8));
+  return [g_(r),g_(g),g_(b)];
+}
+
+/* ==================================================================
+   SIM 1 · LEGGE DI SNELL
+   ================================================================== */
+const snell = setupCanvas('snellCanvas', drawSnell);
+const snAng=document.getElementById('snAng'),snN1=document.getElementById('snN1'),snN2=document.getElementById('snN2');
+function drawSnell(){
+  const {ctx,W,H}=snell; ctx.clearRect(0,0,W,H);
+  const cx=W/2, cy=H/2;
+  const n1=parseFloat(snN1.value), n2=parseFloat(snN2.value), th1=parseFloat(snAng.value)*Math.PI/180;
+  // sfondo due mezzi
+  ctx.save();
+  ctx.fillStyle=css('--accent2'); ctx.globalAlpha=0.06; ctx.fillRect(0,0,W,cy);
+  ctx.globalAlpha=0.03; ctx.fillRect(0,cy,W,H-cy);
+  ctx.restore();
+  line(ctx,0,cy,W,cy,css('--line-strong'),2);
+  line(ctx,cx,20,cx,H-20,css('--line-strong'),1,[5,5]); // normale
+  label(ctx,'normale',cx+6,32,css('--muted'),12);
+  label(ctx,'n₁ = '+n1.toFixed(2),14,26,css('--accent2'),14);
+  label(ctx,'n₂ = '+n2.toFixed(2),14,H-16,css('--accent2'),14);
+
+  const L=Math.min(W,H)*0.42;
+  // incidente (arriva dall'alto-sinistra al punto O)
+  const ix=cx - L*Math.sin(th1), iy=cy - L*Math.cos(th1);
+  arrow(ctx,ix,iy,cx,cy,css('--ray'),3);
+  label(ctx,'incidente',ix-10,iy-8,css('--ink-soft'),13);
+  // riflesso
+  const rx=cx + L*Math.sin(th1), ry=cy - L*Math.cos(th1);
+  arrow(ctx,cx,cy,rx,ry,css('--ray'),2.5);
+  label(ctx,'riflesso',rx-6,ry-8,css('--ink-soft'),13);
+
+  // rifrazione
+  const sinth2 = n1*Math.sin(th1)/n2;
+  let tir=false;
+  if(sinth2<=1){
+    const th2=Math.asin(sinth2);
+    const tx=cx + L*Math.sin(th2), ty=cy + L*Math.cos(th2);
+    arrow(ctx,cx,cy,tx,ty,css('--accent2'),3);
+    label(ctx,'rifratto',tx+4,ty+4,css('--accent2'),13);
+    // archi angoli
+    ctx.save();ctx.strokeStyle=css('--muted');ctx.lineWidth=1;
+    ctx.beginPath();ctx.arc(cx,cy,34,-Math.PI/2-th1,-Math.PI/2,false);ctx.stroke();
+    ctx.beginPath();ctx.arc(cx,cy,34,Math.PI/2,Math.PI/2+th2,false);ctx.stroke();
+    ctx.restore();
+  } else {
+    tir=true;
+    // enfasi riflesso
+    arrow(ctx,cx,cy,rx,ry,css('--ray'),3.5);
+    ctx.save();ctx.fillStyle=css('--bad');ctx.globalAlpha=.9;
+    label(ctx,'RIFLESSIONE TOTALE',cx+30,cy+40,css('--bad'),15);ctx.restore();
+  }
+  dot(ctx,cx,cy,4,css('--ink'));
+
+  // readout
+  const ro=document.getElementById('snReadout');
+  let thL = (n2<n1)? (Math.asin(n2/n1)*180/Math.PI):null;
+  let html='<span class="chip">θ₁ <b>'+parseFloat(snAng.value).toFixed(0)+'°</b></span>';
+  if(!tir){ html+='<span class="chip">θ₂ <b>'+(Math.asin(sinth2)*180/Math.PI).toFixed(1)+'°</b></span>'; }
+  else { html+='<span class="chip" style="border-color:var(--bad);color:var(--bad)">nessun rifratto</span>'; }
+  if(thL!==null){ html+='<span class="chip hl">angolo limite θ_L <b>'+thL.toFixed(1)+'°</b></span>'; }
+  else { html+='<span class="chip">n₂ ≥ n₁: nessun angolo limite</span>'; }
+  ro.innerHTML=html;
+  document.getElementById('snAngV').textContent=parseFloat(snAng.value).toFixed(0)+'°';
+  document.getElementById('snN1V').textContent=n1.toFixed(2);
+  document.getElementById('snN2V').textContent=n2.toFixed(2);
+}
+[snAng,snN1,snN2].forEach(el=>el.addEventListener('input',drawSnell));
+
+/* ==================================================================
+   SIM 2 · BANCO OTTICO (lenti e specchi)
+   ================================================================== */
+const bench = setupCanvas('benchCanvas', drawBench);
+const bp=document.getElementById('bp'),bf=document.getElementById('bf'),bh=document.getElementById('bh');
+const benchType=document.getElementById('benchType');
+let benchMode='lensC';
+benchType.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
+  benchType.querySelectorAll('button').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active'); benchMode=b.dataset.t; drawBench();
+}));
+[bp,bf,bh].forEach(el=>el.addEventListener('input',drawBench));
+
+function drawBench(){
+  const {ctx,W,H}=bench; ctx.clearRect(0,0,W,H);
+  const axisY=H/2, cx=W*0.5;
+  const isMirror = benchMode==='mirC'||benchMode==='mirX';
+  const converging = benchMode==='lensC'||benchMode==='mirC';
+  const fpix = parseFloat(bf.value);                 // focale in pixel (valore assoluto)
+  const f = converging? fpix : -fpix;                // segno
+  const ho = parseFloat(bh.value);
+  const p = parseFloat(bp.value)*fpix;               // distanza oggetto in pixel (p in unità di f)
+  // per specchio la luce riparte verso sinistra; oggetto sempre a sinistra
+  // equazione: 1/p + 1/q = 1/f  =>  q = 1/(1/f - 1/p)
+  let q;
+  const inv = 1/f - 1/p;
+  q = Math.abs(inv)<1e-6 ? Infinity : 1/inv;
+  const m = -q/p;                                    // ingrandimento
+  const hi = m*ho;
+
+  // asse
+  line(ctx,0,axisY,W,axisY,css('--line-strong'),1.5);
+
+  // disegno elemento
+  const elH=Math.min(H*0.42, ho+70);
+  drawElement(ctx,cx,axisY,elH,benchMode);
+
+  // fuochi
+  const fpxL = cx - fpix, fpxR = cx + fpix;
+  if(isMirror){
+    // fuoco e centro davanti allo specchio (a sinistra), per concavo
+    const sgn = converging?1:-1;
+    dot(ctx,cx - sgn*fpix,axisY,4,css('--accent2')); label(ctx,'F',cx - sgn*fpix-4,axisY+18,css('--accent2'),13);
+    dot(ctx,cx - sgn*2*fpix,axisY,3,css('--muted')); label(ctx,'C',cx - sgn*2*fpix-4,axisY+18,css('--muted'),12);
+  } else {
+    dot(ctx,fpxL,axisY,4,css('--accent2')); label(ctx,'F',fpxL-4,axisY+18,css('--accent2'),13);
+    dot(ctx,fpxR,axisY,4,css('--accent2')); label(ctx,"F'",fpxR-4,axisY+18,css('--accent2'),13);
+  }
+
+  // oggetto (a sinistra)
+  const ox=cx-p, oyTop=axisY-ho;
+  arrow(ctx,ox,axisY,ox,oyTop,css('--accent3'),3);
+  label(ctx,'oggetto',ox-12,axisY+20,css('--accent3'),13);
+  const P={x:ox,y:oyTop};
+
+  // punto immagine
+  let img=null, real=false, atInfinity=(q===Infinity);
+  if(!atInfinity){
+    let ix;
+    if(isMirror){ ix = cx - q; real = q>0; }   // reale davanti (sinistra) se q>0
+    else { ix = cx + q; real = q>0; }          // reale dietro (destra) se q>0
+    img={x:ix, y:axisY-hi};
+  }
+
+  // tracciamento raggi
+  const propSign = isMirror? -1 : +1;  // direzione di propagazione dopo l'elemento
+  ctx.save();
+  if(atInfinity || !img){
+    // caso p=f: raggi escono paralleli
+    drawParallelExit(ctx,P,cx,axisY,ho,f,isMirror,propSign,W);
+  } else {
+    // raggio 1: parallelo all'asse fino all'elemento, poi passa/appare da fuoco -> verso immagine
+    const A={x:cx, y:P.y};
+    drawRayToImage(ctx,P,A,img,propSign,real,W);
+    // raggio 2: per il centro/vertice, indeviato-simmetrico -> verso immagine
+    const Cc={x:cx, y:axisY};
+    drawRayToImage(ctx,P,Cc,img,propSign,real,W);
+  }
+  ctx.restore();
+
+  // immagine
+  if(img){
+    const solid = real;
+    arrow(ctx,img.x,axisY,img.x,img.y, css('--accent3'),2.5);
+    if(!solid){
+      // ridisegna tratteggiata
+      ctx.clearRect(0,0,0,0);
+    }
+    // freccia immagine: se virtuale disegno tratteggiata sovrapposta
+    if(!real){
+      line(ctx,img.x,axisY,img.x,img.y,css('--bg2'),3); // cancella
+      line(ctx,img.x,axisY,img.x,img.y,css('--accent3'),2.5,[6,4]);
+      arrow(ctx,img.x,(axisY+img.y)/2,img.x,img.y,css('--accent3'),2.5);
+    }
+    label(ctx,'immagine', img.x+6, img.y + (hi>0?-6:16), css('--accent3'),13);
+  }
+
+  // readout
+  const ro=document.getElementById('benchReadout');
+  const typeName={lensC:'Lente convergente',lensD:'Lente divergente',mirC:'Specchio concavo',mirX:'Specchio convesso'}[benchMode];
+  let natura, verso, dim;
+  if(atInfinity){ natura='immagine all\'infinito'; verso='—'; dim='—'; }
+  else{
+    natura = real? 'reale' : 'virtuale';
+    verso = m<0? 'capovolta':'dritta';
+    dim = Math.abs(m)>1.02? 'ingrandita' : (Math.abs(m)<0.98?'rimpicciolita':'stessa dimensione');
+  }
+  let html='<span class="chip">'+typeName+'</span>';
+  html+='<span class="chip">p <b>'+p.toFixed(0)+'</b></span>';
+  html+='<span class="chip">f <b>'+f.toFixed(0)+'</b></span>';
+  html+='<span class="chip">q <b>'+(atInfinity?'∞':q.toFixed(0))+'</b></span>';
+  html+='<span class="chip">G <b>'+(atInfinity?'∞':m.toFixed(2))+'</b></span>';
+  html+='<span class="chip hl">'+natura+(atInfinity?'':' · '+verso+' · '+dim)+'</span>';
+  ro.innerHTML=html;
+
+  document.getElementById('bpV').textContent=(parseFloat(bp.value)).toFixed(1)+' f';
+  document.getElementById('bfV').textContent=fpix.toFixed(0);
+  document.getElementById('bhV').textContent=ho.toFixed(0);
+}
+function drawElement(ctx,cx,axisY,elH,mode){
+  const top=axisY-elH, bot=axisY+elH;
+  if(mode==='lensC'){
+    ctx.save();ctx.strokeStyle=css('--accent');ctx.fillStyle=css('--accent2');ctx.globalAlpha=.12;
+    ctx.beginPath();
+    ctx.moveTo(cx,top);ctx.quadraticCurveTo(cx+14,axisY,cx,bot);
+    ctx.quadraticCurveTo(cx-14,axisY,cx,top);ctx.fill();ctx.globalAlpha=1;
+    ctx.lineWidth=2.5;ctx.stroke();ctx.restore();
+    arrowHead(ctx,cx,top,'up');arrowHead(ctx,cx,bot,'down');
+  } else if(mode==='lensD'){
+    ctx.save();ctx.strokeStyle=css('--accent');ctx.fillStyle=css('--accent2');ctx.globalAlpha=.12;
+    const w=10;
+    ctx.beginPath();
+    ctx.moveTo(cx-w,top);ctx.quadraticCurveTo(cx+4,axisY,cx-w,bot);
+    ctx.lineTo(cx+w,bot);ctx.quadraticCurveTo(cx-4,axisY,cx+w,top);ctx.closePath();ctx.fill();ctx.globalAlpha=1;
+    ctx.lineWidth=2.5;ctx.stroke();ctx.restore();
+    arrowHead(ctx,cx,top,'down');arrowHead(ctx,cx,bot,'up');
+  } else {
+    // specchi: arco. concavo apre a sinistra, convesso a destra
+    const concave = mode==='mirC';
+    ctx.save();ctx.strokeStyle=css('--muted');ctx.lineWidth=3;
+    ctx.beginPath();
+    const bend=concave?26:-26;
+    ctx.moveTo(cx-bend,top);ctx.quadraticCurveTo(cx+bend,axisY,cx-bend,bot);
+    ctx.stroke();
+    // retro tratteggio
+    ctx.restore();
+  }
+}
+function arrowHead(ctx,x,y,dir){
+  ctx.save();ctx.fillStyle=css('--accent');ctx.beginPath();
+  const s=5,dy=dir==='up'?1:-1;
+  ctx.moveTo(x,y);ctx.lineTo(x-s,y+dy*s);ctx.lineTo(x+s,y+dy*s);ctx.closePath();ctx.fill();ctx.restore();
+}
+// disegna raggio: incidente P->entry (solido), poi uscente lungo la retta entry-img
+function drawRayToImage(ctx,P,entry,img,propSign,real,W){
+  const ray=css('--ray'), rayD=css('--muted');
+  line(ctx,P.x,P.y,entry.x,entry.y,ray,2.2);
+  // direzione verso img
+  let dx=img.x-entry.x, dy=img.y-entry.y;
+  const len=Math.hypot(dx,dy)||1; dx/=len;dy/=len;
+  // vogliamo componente x concorde con propSign
+  let ux=dx,uy=dy;
+  if(Math.sign(dx)!==Math.sign(propSign) && Math.abs(dx)>1e-3){ ux=-dx;uy=-dy; }
+  const far=Math.max(W,600)*1.4;
+  line(ctx,entry.x,entry.y,entry.x+ux*far,entry.y+uy*far,ray,2.2);
+  if(!real){
+    // prolungamento tratteggiato fino all'immagine virtuale
+    line(ctx,entry.x,entry.y,img.x,img.y,rayD,1.6,[6,4]);
+  }
+}
+function drawParallelExit(ctx,P,cx,axisY,ho,f,isMirror,propSign,W){
+  const ray=css('--ray');
+  const A={x:cx,y:P.y};
+  line(ctx,P.x,P.y,A.x,A.y,ray,2.2);
+  const far=Math.max(W,600)*1.4;
+  line(ctx,A.x,A.y,A.x+propSign*far,A.y,ray,2.2);
+  const Cc={x:cx,y:axisY};
+  line(ctx,P.x,P.y,Cc.x,Cc.y,ray,2.2);
+  let dx=Cc.x-P.x,dy=Cc.y-P.y;const l=Math.hypot(dx,dy);dx/=l;dy/=l;
+  if(Math.sign(dx)!==Math.sign(propSign)){dx=-dx;dy=-dy;}
+  line(ctx,Cc.x,Cc.y,Cc.x+dx*far,Cc.y+dy*far,ray,2.2);
+  label(ctx,'raggi paralleli (immagine all\'infinito)',cx+10,axisY-10,css('--muted'),12);
+}
+
+// drag oggetto sul canvas del banco
+(function(){
+  const cv=bench.cv; let dragging=false;
+  function pos(e){const r=cv.getBoundingClientRect();const x=(e.touches?e.touches[0].clientX:e.clientX)-r.left;return x;}
+  function nearObject(x){
+    const W=bench.W,cx=W*0.5,fpix=parseFloat(bf.value);
+    const ox=cx-parseFloat(bp.value)*fpix; return Math.abs(x-ox)<40;
+  }
+  function update(x){
+    const W=bench.W,cx=W*0.5,fpix=parseFloat(bf.value);
+    let pPix=cx-x; if(pPix<fpix*0.2)pPix=fpix*0.2;
+    let pf=pPix/fpix; pf=Math.max(0.2,Math.min(6,pf));
+    bp.value=pf.toFixed(2); drawBench();
+  }
+  cv.addEventListener('mousedown',e=>{if(nearObject(pos(e))){dragging=true;}});
+  window.addEventListener('mousemove',e=>{if(dragging)update(pos(e));});
+  window.addEventListener('mouseup',()=>dragging=false);
+  cv.addEventListener('touchstart',e=>{if(nearObject(pos(e))){dragging=true;e.preventDefault();}},{passive:false});
+  cv.addEventListener('touchmove',e=>{if(dragging){update(pos(e));e.preventDefault();}},{passive:false});
+  cv.addEventListener('touchend',()=>dragging=false);
+})();
+
+/* ==================================================================
+   SIM 3 · DOPPIA FENDITURA
+   ================================================================== */
+const young=setupCanvas('youngCanvas',drawYoung);
+const yWl=document.getElementById('yWl'),yD=document.getElementById('yD');
+let youngPhase=0;
+function drawYoung(){
+  const {ctx,W,H}=young; ctx.clearRect(0,0,W,H);
+  const wl=parseFloat(yWl.value), d=parseFloat(yD.value)*1e-3; // m
+  const L=1.0; // schermo a 1 m (fisso, didattico)
+  const lam=wl*1e-9;
+  const [r,g,b]=wl2rgb(wl);
+  const col='rgb('+r+','+g+','+b+')';
+  // scala: mappiamo y reale su schermo canvas. Prendiamo range ±6 interfrange
+  const dy=lam*L/d; // interfrangia (m)
+  const span=8*dy;  // metà finestra
+  const barTop=20, barH=H-70;
+  // pattern intensità I=cos^2(pi d y /(lam L)); disegno colonna per colonna
+  // (asse orizzontale = posizione sullo schermo)
+  for(let px=0;px<W;px++){
+    const y=(px/W-0.5)*2*span; // m
+    let I=Math.pow(Math.cos(Math.PI*d*y/(lam*L)),2);
+    I*=youngPhase; // costruzione progressiva
+    ctx.fillStyle='rgb('+Math.round(r*I)+','+Math.round(g*I)+','+Math.round(b*I)+')';
+    ctx.fillRect(px,barTop,1,barH);
+  }
+  // cornice
+  ctx.save();ctx.strokeStyle=css('--line-strong');ctx.lineWidth=1;ctx.strokeRect(0.5,barTop,W-1,barH);ctx.restore();
+  // curva intensità sovrapposta in basso
+  ctx.save();ctx.strokeStyle=css('--ink-soft');ctx.globalAlpha=.55;ctx.lineWidth=1.5;ctx.beginPath();
+  for(let px=0;px<W;px++){
+    const y=(px/W-0.5)*2*span;
+    const I=Math.pow(Math.cos(Math.PI*d*y/(lam*L)),2);
+    const yy=barTop+barH-I*(barH-4)*youngPhase;
+    if(px===0)ctx.moveTo(px,yy);else ctx.lineTo(px,yy);
+  }
+  ctx.stroke();ctx.restore();
+  // asse centrale
+  line(ctx,W/2,barTop,W/2,barTop+barH,css('--line-strong'),1,[4,4]);
+  label(ctx,'schermo →',10,barTop+barH+22,css('--muted'),12);
+  label(ctx,'m=0',W/2+4,barTop+14,'rgba(255,255,255,.8)',11);
+
+  document.getElementById('yWlV').textContent=wl+' nm';
+  document.getElementById('yDV').textContent=(parseFloat(yD.value)).toFixed(2)+' mm';
+  const ro=document.getElementById('youngReadout');
+  ro.innerHTML='<span class="chip" style="border-color:'+col+';color:'+col+'">colore ≈ λ '+wl+' nm</span>'+
+    '<span class="chip">d <b>'+(parseFloat(yD.value)).toFixed(2)+' mm</b></span>'+
+    '<span class="chip">L <b>1.00 m</b></span>'+
+    '<span class="chip hl">interfrangia Δy <b>'+(dy*1000).toFixed(2)+' mm</b></span>';
+}
+[yWl,yD].forEach(el=>el.addEventListener('input',()=>{youngPhase=0;animateYoung();}));
+function animateYoung(){
+  youngPhase=Math.min(1,youngPhase+0.08); drawYoung();
+  if(youngPhase<1) requestAnimationFrame(animateYoung);
+}
+
+/* ==================================================================
+   SIM 4 · DIFFRAZIONE SINGOLA FENDITURA
+   ================================================================== */
+const diff=setupCanvas('diffCanvas',drawDiff);
+const dWl=document.getElementById('dWl'),dA=document.getElementById('dA');
+let diffPhase=0;
+function drawDiff(){
+  const {ctx,W,H}=diff; ctx.clearRect(0,0,W,H);
+  const wl=parseFloat(dWl.value), a=parseFloat(dA.value)*1e-3;
+  const L=1.0, lam=wl*1e-9;
+  const [r,g,b]=wl2rgb(wl);
+  const col='rgb('+r+','+g+','+b+')';
+  // primo minimo a sin θ = λ/a ; y1 = L λ/a
+  const y1=L*lam/a;
+  const span=4*y1; // finestra: 4 minimi
+  const barTop=20, barH=H-70;
+  for(let px=0;px<W;px++){
+    const y=(px/W-0.5)*2*span;
+    const beta=Math.PI*a*y/(lam*L);
+    let I = beta===0?1:Math.pow(Math.sin(beta)/beta,2);
+    I*=diffPhase;
+    ctx.fillStyle='rgb('+Math.round(r*I)+','+Math.round(g*I)+','+Math.round(b*I)+')';
+    ctx.fillRect(px,barTop,1,barH);
+  }
+  ctx.save();ctx.strokeStyle=css('--line-strong');ctx.lineWidth=1;ctx.strokeRect(0.5,barTop,W-1,barH);ctx.restore();
+  // curva intensità
+  ctx.save();ctx.strokeStyle=css('--ink-soft');ctx.globalAlpha=.6;ctx.lineWidth=1.5;ctx.beginPath();
+  for(let px=0;px<W;px++){
+    const y=(px/W-0.5)*2*span;
+    const beta=Math.PI*a*y/(lam*L);
+    const I=beta===0?1:Math.pow(Math.sin(beta)/beta,2);
+    const yy=barTop+barH-I*(barH-4)*diffPhase;
+    if(px===0)ctx.moveTo(px,yy);else ctx.lineTo(px,yy);
+  }
+  ctx.stroke();ctx.restore();
+  line(ctx,W/2,barTop,W/2,barTop+barH,css('--line-strong'),1,[4,4]);
+  label(ctx,'massimo centrale',W/2+6,barTop+16,'rgba(255,255,255,.85)',11);
+
+  document.getElementById('dWlV').textContent=wl+' nm';
+  document.getElementById('dAV').textContent=(parseFloat(dA.value)).toFixed(2)+' mm';
+  const ro=document.getElementById('diffReadout');
+  const halfWidthDeg=Math.asin(Math.min(1,lam/a))*180/Math.PI;
+  ro.innerHTML='<span class="chip" style="border-color:'+col+';color:'+col+'">λ '+wl+' nm</span>'+
+    '<span class="chip">a <b>'+(parseFloat(dA.value)).toFixed(2)+' mm</b></span>'+
+    '<span class="chip hl">semiampiezza centrale <b>±'+halfWidthDeg.toFixed(2)+'°</b></span>';
+}
+[dWl,dA].forEach(el=>el.addEventListener('input',()=>{diffPhase=0;animateDiff();}));
+function animateDiff(){
+  diffPhase=Math.min(1,diffPhase+0.08); drawDiff();
+  if(diffPhase<1) requestAnimationFrame(animateDiff);
+}
+
+/* ==================================================================
+   ESERCIZI
+   ================================================================== */
+const EXERCISES={
+ geom:[
+  {d:1,tag:'Legge di Snell',
+   q:'Un raggio di luce passa dall\'aria (\\(n_1=1{,}00\\)) all\'acqua (\\(n_2=1{,}33\\)) con angolo di incidenza di \\(30^\\circ\\). Quanto vale l\'angolo di rifrazione? (in gradi, 1 cifra decimale)',
+   ans:22.1, tol:0.4, unit:'°',
+   hints:['Scrivi la legge di Snell: \\(n_1\\sin\\theta_1=n_2\\sin\\theta_2\\).',
+          'Isola \\(\\sin\\theta_2=\\dfrac{n_1\\sin\\theta_1}{n_2}=\\dfrac{1{,}00\\cdot\\sin30^\\circ}{1{,}33}\\).',
+          '\\(\\sin30^\\circ=0{,}5\\), quindi \\(\\sin\\theta_2=0{,}376\\). Fai l\'arcoseno.'],
+   sol:'\\(\\sin\\theta_2=\\dfrac{1\\cdot0{,}5}{1{,}33}=0{,}376\\Rightarrow\\theta_2=\\arcsin(0{,}376)\\approx22{,}1^\\circ\\). Passando in un mezzo più denso il raggio si avvicina alla normale (22° < 30°), coerente.'},
+  {d:1,tag:'Indice di rifrazione',
+   q:'In un mezzo la luce viaggia a \\(2{,}0\\times10^{8}\\ \\mathrm{m/s}\\). Qual è l\'indice di rifrazione? (2 cifre decimali)',
+   ans:1.50, tol:0.02, unit:'',
+   hints:['L\'indice è \\(n=\\dfrac{c}{v}\\).',
+          'Usa \\(c=3{,}0\\times10^{8}\\ \\mathrm{m/s}\\).'],
+   sol:'\\(n=\\dfrac{3{,}0\\times10^{8}}{2{,}0\\times10^{8}}=1{,}50\\).'},
+  {d:2,tag:'Angolo limite',
+   q:'Per il vetro (\\(n_1=1{,}50\\)) a contatto con l\'aria (\\(n_2=1{,}00\\)), quanto vale l\'angolo limite? (1 cifra decimale)',
+   ans:41.8, tol:0.4, unit:'°',
+   hints:['L\'angolo limite si ha quando \\(\\theta_2=90^\\circ\\), cioè \\(\\sin\\theta_L=\\dfrac{n_2}{n_1}\\).',
+          '\\(\\sin\\theta_L=\\dfrac{1{,}00}{1{,}50}=0{,}667\\).'],
+   sol:'\\(\\sin\\theta_L=\\dfrac{1}{1{,}5}=0{,}667\\Rightarrow\\theta_L=\\arcsin(0{,}667)\\approx41{,}8^\\circ\\). Oltre questo angolo: riflessione totale.'},
+  {d:2,tag:'Riflessione totale',
+   q:'Un raggio nell\'acqua (\\(n=1{,}33\\)) colpisce la superficie con l\'aria a \\(50^\\circ\\). L\'angolo limite acqua-aria è ~48,8°. Ci sarà raggio rifratto? Rispondi con "si" oppure "no".',
+   ans:'no', text:true,
+   hints:['Confronta l\'angolo di incidenza con l\'angolo limite.',
+          'Se \\(\\theta_1>\\theta_L\\) non c\'è rifratto: riflessione totale.'],
+   sol:'\\(50^\\circ>48{,}8^\\circ\\): si supera l\'angolo limite, quindi NON c\'è raggio rifratto. Tutta la luce viene riflessa (riflessione totale).'},
+  {d:3,tag:'Snell + geometria',
+   q:'Luce passa da vetro (\\(n=1{,}5\\)) ad acqua (\\(n=1{,}33\\)) con incidenza \\(40^\\circ\\). Angolo di rifrazione? (1 cifra decimale)',
+   ans:46.5, tol:0.6, unit:'°',
+   hints:['Snell: \\(n_1\\sin\\theta_1=n_2\\sin\\theta_2\\), con \\(n_1=1{,}5\\), \\(n_2=1{,}33\\).',
+          '\\(\\sin\\theta_2=\\dfrac{1{,}5\\sin40^\\circ}{1{,}33}\\). Nota: si va verso un mezzo meno denso, quindi il raggio si allontana dalla normale (θ₂>θ₁).',
+          '\\(\\sin40^\\circ=0{,}643\\Rightarrow\\sin\\theta_2=0{,}725\\).'],
+   sol:'\\(\\sin\\theta_2=\\dfrac{1{,}5\\cdot0{,}643}{1{,}33}=0{,}725\\Rightarrow\\theta_2\\approx46{,}5^\\circ\\). Coerente: verso mezzo meno denso il raggio si allontana dalla normale.'}
+ ],
+ lenti:[
+  {d:1,tag:'Punti coniugati',
+   q:'Una lente convergente ha \\(f=10\\ \\mathrm{cm}\\). Un oggetto è a \\(p=30\\ \\mathrm{cm}\\). Dove si forma l\'immagine? (q in cm, 1 decimale)',
+   ans:15.0, tol:0.3, unit:'cm',
+   hints:['Usa \\(\\dfrac1p+\\dfrac1q=\\dfrac1f\\).',
+          '\\(\\dfrac1q=\\dfrac1{10}-\\dfrac1{30}\\).',
+          '\\(\\dfrac1q=\\dfrac{3-1}{30}=\\dfrac{2}{30}\\).'],
+   sol:'\\(\\dfrac1q=\\dfrac1{10}-\\dfrac1{30}=\\dfrac{2}{30}\\Rightarrow q=15\\ \\mathrm{cm}\\). \\(q>0\\): immagine reale, dal lato opposto.'},
+  {d:1,tag:'Ingrandimento',
+   q:'Con i dati precedenti (\\(p=30\\), \\(q=15\\) cm), quanto vale l\'ingrandimento G? (2 decimali)',
+   ans:-0.5, tol:0.03, unit:'',
+   hints:['\\(G=-\\dfrac{q}{p}\\).',
+          'Il segno negativo indica immagine capovolta.'],
+   sol:'\\(G=-\\dfrac{15}{30}=-0{,}50\\): immagine reale, capovolta e rimpicciolita a metà.'},
+  {d:2,tag:'Lente d\'ingrandimento',
+   q:'Lente convergente \\(f=10\\ \\mathrm{cm}\\), oggetto a \\(p=6\\ \\mathrm{cm}\\) (dentro il fuoco). Quanto vale q? (in cm, 1 decimale, col segno)',
+   ans:-15.0, tol:0.4, unit:'cm',
+   hints:['\\(\\dfrac1q=\\dfrac1{10}-\\dfrac16\\). Attento: qui \\(p<f\\).',
+          '\\(\\dfrac1q=\\dfrac{3-5}{30}=-\\dfrac{2}{30}\\).',
+          'Un q negativo significa immagine virtuale (stesso lato dell\'oggetto).'],
+   sol:'\\(\\dfrac1q=\\dfrac1{10}-\\dfrac16=-\\dfrac{2}{30}\\Rightarrow q=-15\\ \\mathrm{cm}\\). Immagine virtuale (\\(q<0\\)), dritta e ingrandita \\(G=-q/p=+2{,}5\\): è la lente d\'ingrandimento.'},
+  {d:2,tag:'Specchio concavo',
+   q:'Specchio concavo con raggio di curvatura \\(R=40\\ \\mathrm{cm}\\). Un oggetto è a \\(p=60\\ \\mathrm{cm}\\). Dove si forma l\'immagine? (q in cm, 1 decimale)',
+   ans:30.0, tol:0.5, unit:'cm',
+   hints:['Prima trova la focale: \\(f=R/2\\).',
+          '\\(f=20\\ \\mathrm{cm}\\). Poi \\(\\dfrac1q=\\dfrac1f-\\dfrac1p\\).',
+          '\\(\\dfrac1q=\\dfrac1{20}-\\dfrac1{60}=\\dfrac{3-1}{60}\\).'],
+   sol:'\\(f=R/2=20\\ \\mathrm{cm}\\). \\(\\dfrac1q=\\dfrac1{20}-\\dfrac1{60}=\\dfrac{2}{60}\\Rightarrow q=30\\ \\mathrm{cm}\\): immagine reale davanti allo specchio.'},
+  {d:3,tag:'Progetto ottico',
+   q:'Vuoi un\'immagine reale ingrandita 3× con una lente \\(f=12\\ \\mathrm{cm}\\). A che distanza p va posto l\'oggetto? (in cm, 1 decimale)',
+   ans:16.0, tol:0.4, unit:'cm',
+   hints:['Immagine reale capovolta ingrandita 3× → \\(G=-3=-q/p\\Rightarrow q=3p\\).',
+          'Sostituisci in \\(\\dfrac1p+\\dfrac1q=\\dfrac1f\\): \\(\\dfrac1p+\\dfrac1{3p}=\\dfrac1{12}\\).',
+          '\\(\\dfrac{4}{3p}=\\dfrac1{12}\\Rightarrow p=\\dfrac{4\\cdot12}{3}\\).'],
+   sol:'Da \\(G=-3\\) segue \\(q=3p\\). Allora \\(\\dfrac1p+\\dfrac1{3p}=\\dfrac{4}{3p}=\\dfrac1{12}\\Rightarrow p=16\\ \\mathrm{cm}\\) (e \\(q=48\\) cm).'}
+ ],
+ onde:[
+  {d:1,tag:'Interfrangia',
+   q:'Doppia fenditura: \\(\\lambda=600\\ \\mathrm{nm}\\), \\(d=0{,}30\\ \\mathrm{mm}\\), schermo a \\(L=2{,}0\\ \\mathrm{m}\\). Quanto vale l\'interfrangia \\(\\Delta y\\)? (in mm, 1 decimale)',
+   ans:4.0, tol:0.15, unit:'mm',
+   hints:['\\(\\Delta y=\\dfrac{\\lambda L}{d}\\). Converti tutto in metri!',
+          '\\(\\lambda=600\\times10^{-9}\\) m, \\(d=0{,}30\\times10^{-3}\\) m.',
+          '\\(\\Delta y=\\dfrac{600\\times10^{-9}\\cdot2{,}0}{0{,}30\\times10^{-3}}\\).'],
+   sol:'\\(\\Delta y=\\dfrac{(600\\times10^{-9})(2{,}0)}{0{,}30\\times10^{-3}}=4{,}0\\times10^{-3}\\ \\mathrm{m}=4{,}0\\ \\mathrm{mm}\\).'},
+  {d:1,tag:'Differenza di cammino',
+   q:'Nella doppia fenditura, la seconda frangia chiara (\\(m=2\\)) corrisponde a una differenza di cammino pari a quanti \\(\\lambda\\)? (numero intero)',
+   ans:2, tol:0.01, unit:'λ',
+   hints:['Massimi: \\(d\\sin\\theta=m\\lambda\\).',
+          'Per \\(m=2\\) la differenza di cammino è \\(2\\lambda\\).'],
+   sol:'Massimo di ordine \\(m\\): \\(\\Delta=m\\lambda\\). Per \\(m=2\\), \\(\\Delta=2\\lambda\\).'},
+  {d:2,tag:'Trova λ',
+   q:'Doppia fenditura con \\(d=0{,}25\\ \\mathrm{mm}\\), \\(L=1{,}5\\ \\mathrm{m}\\): l\'interfrangia misurata è \\(3{,}0\\ \\mathrm{mm}\\). Quanto vale \\(\\lambda\\)? (in nm, intero)',
+   ans:500, tol:15, unit:'nm',
+   hints:['Inverti \\(\\Delta y=\\dfrac{\\lambda L}{d}\\Rightarrow\\lambda=\\dfrac{\\Delta y\\,d}{L}\\).',
+          'In metri: \\(\\Delta y=3{,}0\\times10^{-3}\\), \\(d=0{,}25\\times10^{-3}\\), \\(L=1{,}5\\).'],
+   sol:'\\(\\lambda=\\dfrac{(3{,}0\\times10^{-3})(0{,}25\\times10^{-3})}{1{,}5}=5{,}0\\times10^{-7}\\ \\mathrm{m}=500\\ \\mathrm{nm}\\) (verde).'},
+  {d:2,tag:'Diffrazione',
+   q:'Singola fenditura larga \\(a=0{,}10\\ \\mathrm{mm}\\), \\(\\lambda=500\\ \\mathrm{nm}\\). A quale angolo cade il primo minimo? (in gradi, 2 decimali)',
+   ans:0.29, tol:0.03, unit:'°',
+   hints:['Minimi di diffrazione: \\(a\\sin\\theta=m\\lambda\\), primo minimo \\(m=1\\).',
+          '\\(\\sin\\theta=\\dfrac{\\lambda}{a}=\\dfrac{500\\times10^{-9}}{0{,}10\\times10^{-3}}\\).',
+          '\\(\\sin\\theta=5{,}0\\times10^{-3}\\); per angoli piccoli \\(\\theta\\approx\\sin\\theta\\) in radianti, poi converti.'],
+   sol:'\\(\\sin\\theta=\\dfrac{500\\times10^{-9}}{1{,}0\\times10^{-4}}=5{,}0\\times10^{-3}\\Rightarrow\\theta=\\arcsin(0{,}005)\\approx0{,}29^\\circ\\).'},
+  {d:3,tag:'Potere risolutivo',
+   q:'Un telescopio ha apertura \\(D=0{,}10\\ \\mathrm{m}\\) e osserva a \\(\\lambda=550\\ \\mathrm{nm}\\). Qual è l\'angolo minimo risolvibile (Rayleigh)? (in μrad, 1 decimale)',
+   ans:6.7, tol:0.3, unit:'μrad',
+   hints:['Criterio di Rayleigh: \\(\\theta_{\\min}=1{,}22\\dfrac{\\lambda}{D}\\).',
+          '\\(\\theta_{\\min}=1{,}22\\cdot\\dfrac{550\\times10^{-9}}{0{,}10}\\) radianti.',
+          '1 μrad = \\(10^{-6}\\) rad.'],
+   sol:'\\(\\theta_{\\min}=1{,}22\\cdot\\dfrac{550\\times10^{-9}}{0{,}10}=6{,}7\\times10^{-6}\\ \\mathrm{rad}=6{,}7\\ \\mu\\mathrm{rad}\\). Più grande è D, più fine il dettaglio risolvibile.'}
+ ]
+};
+
+function buildExercises(group){
+  const cont=document.getElementById(group+'-ese-list');
+  EXERCISES[group].forEach((ex,i)=>{
+    const div=document.createElement('div');div.className='exercise';
+    const dcl=ex.d===1?'':(ex.d===2?'d2':'d3');
+    const dlab=ex.d===1?'Base':(ex.d===2?'Intermedio':'Avanzato');
+    let ansHtml;
+    if(ex.text){
+      ansHtml='<input type="text" id="'+group+'-ex'+i+'" placeholder="si / no">';
+    } else {
+      ansHtml='<input type="text" id="'+group+'-ex'+i+'" placeholder="valore'+(ex.unit?' in '+ex.unit:'')+'">';
+    }
+    div.innerHTML=
+      '<span class="etag '+dcl+'">'+dlab+' · '+ex.tag+'</span>'+
+      '<div class="q">'+ex.q+'</div>'+
+      '<div class="ex-ans">'+ansHtml+
+        '<button class="btn primary" data-act="check">Verifica</button>'+
+        '<button class="btn ghost" data-act="hint">Suggerimento</button>'+
+        '<button class="btn ghost" data-act="sol">Soluzione</button>'+
+      '</div>'+
+      '<div class="hintbox" id="'+group+'-hb'+i+'"></div>'+
+      '<div class="feedback" id="'+group+'-fb'+i+'"></div>'+
+      '<div class="solution" id="'+group+'-so'+i+'"><span class="st">Soluzione</span><div>'+ex.sol+'</div></div>';
+    cont.appendChild(div);
+    let hintIdx=0;
+    div.querySelector('[data-act="hint"]').addEventListener('click',()=>{
+      if(hintIdx<ex.hints.length){
+        const hb=document.getElementById(group+'-hb'+i);
+        const h=document.createElement('div');h.className='hint';
+        h.innerHTML='<b>Indizio '+(hintIdx+1)+'.</b> '+ex.hints[hintIdx];
+        hb.appendChild(h);hintIdx++;
+        if(window.MathJax&&MathJax.typesetPromise)MathJax.typesetPromise([hb]);
+      } else {
+        const hb=document.getElementById(group+'-hb'+i);
+        const h=document.createElement('div');h.className='hint';
+        h.innerHTML='Non ci sono altri indizi: prova la soluzione completa.';
+        hb.appendChild(h);
+      }
+    });
+    div.querySelector('[data-act="sol"]').addEventListener('click',()=>{
+      document.getElementById(group+'-so'+i).classList.add('show');
+    });
+    div.querySelector('[data-act="check"]').addEventListener('click',()=>{
+      const val=document.getElementById(group+'-ex'+i).value.trim();
+      const fb=document.getElementById(group+'-fb'+i);
+      fb.classList.add('show');
+      let ok=false;
+      if(ex.text){
+        ok = val.toLowerCase().replace('ì','i')===String(ex.ans).toLowerCase();
+      } else {
+        const num=parseFloat(val.replace(',','.'));
+        ok = !isNaN(num) && Math.abs(num-ex.ans)<=ex.tol;
+      }
+      if(ok){fb.className='feedback show ok';fb.innerHTML='Corretto. Ottimo lavoro.';}
+      else{fb.className='feedback show no';fb.innerHTML='Non ancora. Rivedi i passaggi o usa un suggerimento; poi puoi guardare la soluzione.';}
+    });
+  });
+}
+
+/* ==================================================================
+   QUIZ
+   ================================================================== */
+const QUIZ={
+ geom:{
+  theory:[
+   {q:'La normale rispetto a cui si misurano gli angoli di incidenza e riflessione è:',
+    o:['la superficie riflettente stessa','la perpendicolare alla superficie nel punto di incidenza','la bisettrice tra raggio incidente e riflesso','una retta parallela alla superficie'],c:1,
+    e:'Gli angoli in ottica si misurano SEMPRE rispetto alla normale, cioè la perpendicolare alla superficie nel punto in cui il raggio incide.'},
+   {q:'In uno specchio piano l\'immagine è:',
+    o:['reale, capovolta','reale, dritta','virtuale, dritta, delle stesse dimensioni','virtuale, capovolta'],c:2,
+    e:'Lo specchio piano forma un\'immagine virtuale (dietro lo specchio), dritta, simmetrica e delle stesse dimensioni dell\'oggetto.'},
+   {q:'L\'indice di rifrazione di un mezzo è definito come:',
+    o:['\\(n=v/c\\)','\\(n=c\\cdot v\\)','\\(n=c/v\\)','\\(n=c-v\\)'],c:2,
+    e:'\\(n=c/v\\), rapporto tra velocità nel vuoto e velocità nel mezzo. È sempre ≥ 1.'},
+   {q:'Passando da un mezzo meno denso a uno più denso (\\(n_2>n_1\\)), il raggio rifratto:',
+    o:['si avvicina alla normale','si allontana dalla normale','non cambia direzione','torna indietro'],c:0,
+    e:'Verso un mezzo otticamente più denso il raggio si avvicina alla normale (\\(\\theta_2<\\theta_1\\)).'},
+   {q:'La riflessione totale può avvenire solo quando la luce:',
+    o:['va da mezzo meno denso a più denso','va da mezzo più denso a meno denso','incide perpendicolarmente','ha grande lunghezza d\'onda'],c:1,
+    e:'Serve \\(n_1>n_2\\): solo così esiste un angolo limite oltre il quale non c\'è rifratto e tutta la luce si riflette.'},
+   {q:'L\'angolo limite è definito dalla condizione:',
+    o:['\\(\\theta_2=0^\\circ\\)','\\(\\theta_1=\\theta_2\\)','\\(\\theta_2=90^\\circ\\)','\\(\\theta_1=90^\\circ\\)'],c:2,
+    e:'All\'angolo limite il raggio rifratto sfiora la superficie: \\(\\theta_2=90^\\circ\\), da cui \\(\\sin\\theta_L=n_2/n_1\\).'},
+   {q:'Le fibre ottiche funzionano grazie a:',
+    o:['la dispersione','la riflessione totale interna','la diffrazione','l\'assorbimento'],c:1,
+    e:'La luce resta intrappolata nel nucleo perché incide sempre oltre l\'angolo limite: riflessione totale ripetuta.'},
+   {q:'Un prisma separa i colori della luce bianca perché:',
+    o:['ogni colore ha velocità uguale','l\'indice di rifrazione dipende dalla lunghezza d\'onda','riflette diversamente ogni colore','assorbe alcuni colori'],c:1,
+    e:'La dispersione: \\(n\\) varia leggermente con \\(\\lambda\\), quindi ogni colore devia di un angolo diverso.'},
+   {q:'La propagazione rettilinea della luce vale in un mezzo:',
+    o:['qualsiasi','omogeneo e trasparente','solo nel vuoto','solo se colorato'],c:1,
+    e:'In un mezzo omogeneo (stesso indice ovunque) e trasparente la luce va in linea retta. Se l\'indice varia, il raggio si incurva (miraggi).'},
+   {q:'Un miraggio si spiega con:',
+    o:['la riflessione su uno specchio d\'acqua','strati d\'aria con indice diverso che deviano progressivamente la luce','la diffrazione atmosferica','un\'illusione puramente ottica del cervello'],c:1,
+    e:'Strati d\'aria a temperature diverse hanno indici diversi: la luce si incurva fino a una riflessione che mostra il cielo "a terra".'}
+  ],
+  num:[
+   {q:'Aria→vetro, \\(n_1=1{,}00\\), \\(n_2=1{,}50\\), incidenza \\(45^\\circ\\). Angolo di rifrazione (gradi, 1 dec.)?',a:28.1,tol:0.5,
+    e:'\\(\\sin\\theta_2=\\dfrac{1\\cdot\\sin45^\\circ}{1{,}5}=\\dfrac{0{,}707}{1{,}5}=0{,}471\\Rightarrow\\theta_2\\approx28{,}1^\\circ\\).'},
+   {q:'Velocità della luce in un mezzo con \\(n=1{,}25\\)? (in \\(10^8\\) m/s, 2 dec.)',a:2.40,tol:0.05,
+    e:'\\(v=c/n=3{,}0\\times10^{8}/1{,}25=2{,}40\\times10^{8}\\ \\mathrm{m/s}\\).'},
+   {q:'Angolo limite acqua(\\(1{,}33\\))→aria(\\(1{,}00\\))? (gradi, 1 dec.)',a:48.8,tol:0.5,
+    e:'\\(\\sin\\theta_L=1{,}00/1{,}33=0{,}752\\Rightarrow\\theta_L\\approx48{,}8^\\circ\\).'},
+   {q:'Diamante \\(n=2{,}42\\), aria \\(n=1\\). Angolo limite? (gradi, 1 dec.)',a:24.4,tol:0.5,
+    e:'\\(\\sin\\theta_L=1/2{,}42=0{,}413\\Rightarrow\\theta_L\\approx24{,}4^\\circ\\). Angolo piccolo → molte riflessioni interne → brillantezza.'},
+   {q:'Aria→acqua \\(n=1{,}33\\), incidenza \\(60^\\circ\\). Angolo di rifrazione? (gradi, 1 dec.)',a:40.6,tol:0.6,
+    e:'\\(\\sin\\theta_2=\\dfrac{\\sin60^\\circ}{1{,}33}=\\dfrac{0{,}866}{1{,}33}=0{,}651\\Rightarrow\\theta_2\\approx40{,}6^\\circ\\).'}
+  ]
+ },
+ lenti:{
+  theory:[
+   {q:'La distanza focale di uno specchio sferico vale:',
+    o:['\\(f=R\\)','\\(f=2R\\)','\\(f=R/2\\)','\\(f=R^2\\)'],c:2,
+    e:'\\(f=R/2\\): il fuoco sta a metà tra il vertice e il centro di curvatura.'},
+   {q:'Nella lente convergente, un raggio parallelo all\'asse dopo la lente:',
+    o:['prosegue parallelo','passa per il fuoco opposto \\(F\'\\)','torna indietro','passa per il centro'],c:1,
+    e:'È il primo raggio principale: parallelo → esce per il fuoco dal lato opposto.'},
+   {q:'Un raggio che passa per il centro ottico di una lente sottile:',
+    o:['si riflette','prosegue indeviato','passa per il fuoco','si ferma'],c:1,
+    e:'Il raggio centrale non viene deviato: è il più semplice da tracciare, disegnalo sempre.'},
+   {q:'Un\'immagine con \\(q>0\\) (nostra convenzione) è:',
+    o:['virtuale e dritta','reale e capovolta','sempre ingrandita','all\'infinito'],c:1,
+    e:'\\(q>0\\) indica immagine reale; per un singolo elemento convergente essa è capovolta (\\(G=-q/p<0\\)).'},
+   {q:'La lente d\'ingrandimento si usa con l\'oggetto:',
+    o:['oltre il centro di curvatura','esattamente nel fuoco','entro il fuoco (\\(p<f\\))','all\'infinito'],c:2,
+    e:'Con \\(p<f\\) la lente convergente dà immagine virtuale, dritta e ingrandita.'},
+   {q:'L\'ingrandimento lineare è dato da:',
+    o:['\\(G=q/p\\)','\\(G=-q/p\\)','\\(G=p/q\\)','\\(G=p\\cdot q\\)'],c:1,
+    e:'\\(G=h_i/h_o=-q/p\\). Il segno indica il verso: negativo = capovolta.'},
+   {q:'Uno specchio convesso forma sempre immagini:',
+    o:['reali e ingrandite','virtuali, dritte e rimpicciolite','reali e capovolte','all\'infinito'],c:1,
+    e:'Lo specchio convesso (divergente, \\(f<0\\)) dà sempre immagini virtuali, dritte e rimpicciolite: perciò è usato come specchio "grandangolo".'},
+   {q:'Nel microscopio ottico:',
+    o:['una sola lente ingrandisce','obiettivo e oculare, ingrandimenti che si moltiplicano','si usano solo specchi','l\'oggetto è all\'infinito'],c:1,
+    e:'Due lenti convergenti: l\'obiettivo forma un\'immagine reale ingrandita, l\'oculare la ingrandisce ancora. Gli ingrandimenti si moltiplicano.'},
+   {q:'Il cannocchiale astronomico è pensato per oggetti:',
+    o:['molto vicini','all\'infinito (lontani)','entro il fuoco','microscopici'],c:1,
+    e:'Per oggetti lontani i raggi arrivano quasi paralleli; l\'obiettivo forma l\'immagine nel suo fuoco. L\'ingrandimento vale ~\\(f_{ob}/f_{oc}\\).'},
+   {q:'Per costruire l\'immagine, il numero minimo di raggi principali necessari è:',
+    o:['uno','due','tre','quattro'],c:1,
+    e:'Bastano due raggi: la loro intersezione individua la punta dell\'immagine. Il terzo serve solo come verifica.'}
+  ],
+  num:[
+   {q:'Lente \\(f=20\\) cm, oggetto a \\(p=60\\) cm. Distanza immagine q? (cm, 1 dec.)',a:30.0,tol:0.5,
+    e:'\\(1/q=1/20-1/60=(3-1)/60=2/60\\Rightarrow q=30\\) cm (reale).'},
+   {q:'Con \\(p=60\\), \\(q=30\\) cm: ingrandimento G? (2 dec.)',a:-0.5,tol:0.03,
+    e:'\\(G=-q/p=-30/60=-0{,}50\\): reale, capovolta, rimpicciolita.'},
+   {q:'Lente \\(f=15\\) cm, oggetto a \\(p=10\\) cm (dentro il fuoco). q? (cm, col segno, 1 dec.)',a:-30.0,tol:0.6,
+    e:'\\(1/q=1/15-1/10=(2-3)/30=-1/30\\Rightarrow q=-30\\) cm: immagine virtuale.'},
+   {q:'Specchio concavo \\(R=50\\) cm, oggetto a \\(p=100\\) cm. q? (cm, 1 dec.)',a:33.3,tol:0.6,
+    e:'\\(f=R/2=25\\) cm. \\(1/q=1/25-1/100=(4-1)/100=3/100\\Rightarrow q\\approx33{,}3\\) cm.'},
+   {q:'Vuoi \\(G=-2\\) (reale, capovolta, 2×) con lente \\(f=10\\) cm. Distanza oggetto p? (cm, 1 dec.)',a:15.0,tol:0.4,
+    e:'\\(q=2p\\); \\(1/p+1/2p=3/2p=1/10\\Rightarrow p=15\\) cm (e \\(q=30\\) cm).'}
+  ]
+ },
+ onde:{
+  theory:[
+   {q:'L\'esperimento di Young dimostra che la luce:',
+    o:['è fatta solo di corpuscoli','ha natura ondulatoria (interferenza)','viaggia in linea retta sempre','non ha lunghezza d\'onda'],c:1,
+    e:'Le frange chiare e scure sono interferenza: fenomeno tipicamente ondulatorio. Fu la prova decisiva per il modello a onde.'},
+   {q:'Si ha interferenza costruttiva quando la differenza di cammino è:',
+    o:['un multiplo dispari di \\(\\lambda/2\\)','un multiplo intero di \\(\\lambda\\)','uguale a \\(\\lambda/4\\)','nulla sempre'],c:1,
+    e:'Costruttiva: \\(\\Delta=m\\lambda\\) (onde in fase). Distruttiva: \\(\\Delta=(m+\\tfrac12)\\lambda\\).'},
+   {q:'L\'interfrangia \\(\\Delta y=\\lambda L/d\\). Avvicinando le fenditure (d minore) le frange:',
+    o:['si avvicinano','si allargano','scompaiono','cambiano colore'],c:1,
+    e:'\\(\\Delta y\\) è inversamente proporzionale a d: d più piccolo → frange più larghe.'},
+   {q:'Perché le frange siano stabili la luce deve essere:',
+    o:['molto intensa','coerente','bianca','polarizzata'],c:1,
+    e:'Serve coerenza (relazione di fase costante nel tempo), altrimenti le frange si mediano e spariscono.'},
+   {q:'Nella diffrazione da singola fenditura, la formula \\(a\\sin\\theta=m\\lambda\\) individua i:',
+    o:['massimi','minimi','soli massimi centrali','punti di uguale intensità'],c:1,
+    e:'Attenzione: nella singola fenditura \\(m\\) dà i MINIMI (al contrario della doppia fenditura, dove dà i massimi).'},
+   {q:'Stringendo la fenditura (a più piccolo), il massimo centrale di diffrazione:',
+    o:['si restringe','si allarga','sparisce','si sdoppia'],c:1,
+    e:'La larghezza angolare \\(\\propto\\lambda/a\\): fenditura più stretta → massimo centrale più largo.'},
+   {q:'Un reticolo di diffrazione è utile in spettroscopia perché:',
+    o:['assorbe la luce','dà massimi strettissimi la cui posizione dipende da \\(\\lambda\\)','riflette tutto','elimina i colori'],c:1,
+    e:'Molte fenditure → massimi principali strettissimi in \\(d\\sin\\theta=m\\lambda\\): separa con precisione le lunghezze d\'onda.'},
+   {q:'Il modello a raggi (ottica geometrica) è un buon limite quando:',
+    o:['\\(\\lambda\\) è grande rispetto agli ostacoli','\\(\\lambda\\) è trascurabile rispetto agli ostacoli','non c\'è luce','gli ostacoli sono trasparenti'],c:1,
+    e:'L\'ottica geometrica è il limite dell\'ottica ondulatoria per \\(\\lambda\\) piccola rispetto alle dimensioni in gioco.'},
+   {q:'Il criterio di Rayleigh \\(\\theta_{\\min}\\approx1{,}22\\lambda/D\\) dice che, per risolvere dettagli più fini, occorre:',
+    o:['D più piccolo','D più grande','\\(\\lambda\\) più grande','più luce'],c:1,
+    e:'\\(\\theta_{\\min}\\propto1/D\\): apertura più grande → angolo risolvibile più piccolo → più dettaglio. Per questo i telescopi sono enormi.'},
+   {q:'La relazione fondamentale tra velocità, frequenza e lunghezza d\'onda della luce è:',
+    o:['\\(c=\\lambda/f\\)','\\(c=\\lambda f\\)','\\(c=f/\\lambda\\)','\\(c=\\lambda+f\\)'],c:1,
+    e:'\\(c=\\lambda f\\): la luce visibile va da ~400 nm (viola) a ~700 nm (rosso).'}
+  ],
+  num:[
+   {q:'\\(\\lambda=500\\) nm, \\(d=0{,}20\\) mm, \\(L=1{,}0\\) m. Interfrangia \\(\\Delta y\\)? (mm, 1 dec.)',a:2.5,tol:0.15,
+    e:'\\(\\Delta y=\\dfrac{(500\\times10^{-9})(1{,}0)}{0{,}20\\times10^{-3}}=2{,}5\\times10^{-3}\\) m = 2,5 mm.'},
+   {q:'Interfrangia \\(\\Delta y=4{,}0\\) mm, \\(d=0{,}15\\) mm, \\(L=1{,}2\\) m. \\(\\lambda\\)? (nm, intero)',a:500,tol:20,
+    e:'\\(\\lambda=\\dfrac{\\Delta y\\,d}{L}=\\dfrac{(4{,}0\\times10^{-3})(0{,}15\\times10^{-3})}{1{,}2}=5{,}0\\times10^{-7}\\) m = 500 nm.'},
+   {q:'Singola fenditura \\(a=0{,}05\\) mm, \\(\\lambda=600\\) nm. Angolo del 1° minimo? (gradi, 2 dec.)',a:0.69,tol:0.05,
+    e:'\\(\\sin\\theta=\\lambda/a=600\\times10^{-9}/5\\times10^{-5}=0{,}012\\Rightarrow\\theta\\approx0{,}69^\\circ\\).'},
+   {q:'Reticolo con \\(d=2{,}0\\ \\mu\\)m, \\(\\lambda=500\\) nm. Angolo del 1° massimo (m=1)? (gradi, 1 dec.)',a:14.5,tol:0.6,
+    e:'\\(\\sin\\theta=m\\lambda/d=500\\times10^{-9}/2{,}0\\times10^{-6}=0{,}25\\Rightarrow\\theta\\approx14{,}5^\\circ\\).'},
+   {q:'Telescopio \\(D=0{,}20\\) m, \\(\\lambda=550\\) nm. Angolo minimo risolvibile? (μrad, 1 dec.)',a:3.4,tol:0.2,
+    e:'\\(\\theta_{\\min}=1{,}22\\lambda/D=1{,}22\\cdot550\\times10^{-9}/0{,}20=3{,}4\\times10^{-6}\\) rad = 3,4 μrad.'}
+  ]
+ }
+};
+
+const QUIZ_EXPL={}; // mappa: elemento .quiz-expl -> testo originale (con MathJax non ancora tipografato)
+function buildQuiz(group){
+  const cont=document.getElementById(group+'-quiz-list');
+  const Q=QUIZ[group];
+  let idx=0;
+  const h3=document.createElement('h3');h3.textContent='Domande teoriche';cont.appendChild(h3);
+  Q.theory.forEach((item)=>{ cont.appendChild(mcQuestion(group,idx,item)); idx++; });
+  const h3b=document.createElement('h3');h3b.textContent='Problemi numerici';cont.appendChild(h3b);
+  Q.num.forEach((item)=>{ cont.appendChild(numQuestion(group,idx,item)); idx++; });
+}
+function mcQuestion(group,idx,item){
+  const div=document.createElement('div');div.className='quiz-q';div.dataset.type='mc';div.dataset.correct=item.c;
+  let opts='';
+  item.o.forEach((o,j)=>{
+    opts+='<label><input type="radio" name="'+group+'-q'+idx+'" value="'+j+'"><span>'+o+'</span></label>';
+  });
+  div.innerHTML='<div class="qn">Teoria · '+(idx+1)+'</div><div class="qt">'+item.q+'</div>'+
+    '<div class="mc-opts quiz">'+opts+'</div>'+
+    '<div class="quiz-expl"></div>';
+  div._expl=item.e;
+  return div;
+}
+function numQuestion(group,idx,item){
+  const div=document.createElement('div');div.className='quiz-q quiz-num';div.dataset.type='num';
+  div.dataset.ans=item.a;div.dataset.tol=item.tol;
+  div.innerHTML='<div class="qn">Numerico · '+(idx+1)+'</div><div class="qt">'+item.q+'</div>'+
+    '<input type="text" placeholder="risposta">'+
+    '<div class="quiz-expl"></div>';
+  div._expl=item.e;
+  return div;
+}
+function gradeQuiz(group){
+  const cont=document.getElementById(group+'-quiz-list');
+  const qs=cont.querySelectorAll('.quiz-q');
+  let score=0,total=qs.length;
+  qs.forEach(q=>{
+    const expl=q.querySelector('.quiz-expl');
+    let ok=false;
+    if(q.dataset.type==='mc'){
+      const c=parseInt(q.dataset.correct);
+      const sel=q.querySelector('input:checked');
+      q.querySelectorAll('.mc-opts label').forEach((lb,j)=>{
+        lb.classList.remove('correct','wrong');
+        if(j===c)lb.classList.add('correct');
+        if(sel&&parseInt(sel.value)===j&&j!==c)lb.classList.add('wrong');
+      });
+      ok = sel && parseInt(sel.value)===c;
+    } else {
+      const inp=q.querySelector('input');
+      const num=parseFloat(inp.value.replace(',','.'));
+      ok = !isNaN(num) && Math.abs(num-parseFloat(q.dataset.ans))<=parseFloat(q.dataset.tol);
+      inp.style.borderColor = ok?css('--good'):css('--bad');
+    }
+    if(ok)score++;
+    expl.className='quiz-expl show '+(ok?'ok':'no');
+    expl.innerHTML=(ok?'<b>Corretto.</b> ':'<b>Da rivedere.</b> ')+q._expl;
+  });
+  const sc=document.getElementById(group+'-quiz-score');
+  sc.innerHTML='Punteggio: <b>'+score+' / '+total+'</b>'+(score===total?' — perfetto!':(score>=total*0.6?' — bene, rivedi gli errori.':' — ripassa la teoria e riprova.'));
+  if(window.MathJax&&MathJax.typesetPromise)MathJax.typesetPromise([cont]);
+  cont.scrollIntoView({behavior:'smooth',block:'start'});
+}
+function resetQuiz(group){
+  const cont=document.getElementById(group+'-quiz-list');
+  cont.querySelectorAll('.quiz-q').forEach(q=>{
+    q.querySelectorAll('input').forEach(inp=>{ if(inp.type==='radio')inp.checked=false; else{inp.value='';inp.style.borderColor='';} });
+    q.querySelectorAll('.mc-opts label').forEach(lb=>lb.classList.remove('correct','wrong'));
+    const e=q.querySelector('.quiz-expl');e.className='quiz-expl';e.innerHTML='';
+  });
+  document.getElementById(group+'-quiz-score').innerHTML='Punteggio: <b>—</b>';
+}
+
+/* ==================================================================
+   INIT
+   ================================================================== */
+['geom','lenti','onde'].forEach(g=>{buildExercises(g);buildQuiz(g);});
+window.addEventListener('load',()=>{
+  resizeAllCanvases();
+  youngPhase=1;diffPhase=1;
+  drawSnell();drawBench();drawYoung();drawDiff();
+  if(window.MathJax&&MathJax.typesetPromise)MathJax.typesetPromise();
+});
+// primo fit anche prima di load (font/layout)
+setTimeout(()=>{resizeAllCanvases();youngPhase=1;diffPhase=1;drawSnell();drawBench();drawYoung();drawDiff();},60);
+</script>
+</body>
+</html>
